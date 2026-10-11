@@ -1,6 +1,11 @@
-# Game Hub
+# Bitman
 
-Monorepo com backend em Laravel e frontend em React.
+Plataforma para distribuir jogos de navegador vindos de repositórios Git, com
+aprovação administrativa em múltiplas etapas, execução isolada e ranking por jogo.
+
+**Documentação:** [docs/](docs/README.md) · **Plano:** [docs/plano.md](docs/plano.md)
+
+Monorepo com backend em Laravel 13 e frontend em React + TypeScript.
 
 ```
 game-hub/
