@@ -22,7 +22,8 @@ roteamento e deploy já padronizados (referências: `deploy-hub/README.md`,
   (decisão do Rafael). Só o `.env.example` é versionado.
 - **Este diretório é produção.** Toda execução é restrita ao projeto ([convencoes.md](../convencoes.md#operação-segura-no-servidor-de-produção)).
 - CI no GitHub Actions. O deploy segue o fluxo do deploy-hub (`deploy-bitman.sh` + hook + hash aprovado pelo Rafael).
-- E-mail: definido no início da Fase 1 (SMTP real, ou Mailpit atrás da autenticação básica durante o pré-lançamento).
+- E-mail: Resend via SMTP, como no CPO. O Bitman usa API key própria, com permissão só de envio, e remetente
+  `nao-responda@bitman.sandrigo.com.br`. Sem a chave, `MAIL_MAILER=log`.
 
 ## Consequências
 - O projeto convive com os demais sem colisão de nomes ou portas, e sem expor nada além dos dois hosts.

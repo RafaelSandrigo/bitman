@@ -29,8 +29,8 @@ Status: ⬜ não iniciada · 🟨 em andamento · ✅ concluída
 ## Fase 1 — Identidade, acesso e auditoria ⬜
 
 - Registro, login e logout (Sanctum SPA), com rate limit no login.
-- Verificação de e-mail (obrigatória para jogar e submeter) e recuperação de senha (A5). Decidir no início da fase:
-  SMTP real, ou Mailpit atrás da autenticação básica enquanto durar o pré-lançamento.
+- Verificação de e-mail (obrigatória para jogar e submeter) e recuperação de senha (A5). Envio pelo Resend via SMTP,
+  como no CPO.
 - Roles `player` (padrão), `developer` e `admin`, mais permissões granulares.
 - Comando `php artisan user:grant-role {email} {role}` (bootstrap do primeiro admin).
 - Cadastro aberto (role `player`). Somente o admin promove ou rebaixa `developer` pelo painel.
@@ -150,6 +150,7 @@ validação autoritativa de score; multiplayer; comentários e avaliações.
 | Isolamento do Git | Serviço sandbox permanente + egress proxy com allowlist ([ADR 0003](adr/0003-git-sandbox.md)) |
 | Infraestrutura e deploy | Servidor compartilhado: Cloudflare → Traefik, deploy-hub e GitHub Actions ([ADR 0010](adr/0010-infraestrutura-homelab.md)) |
 | Cadastro | E-mail + senha, com verificação de e-mail e recuperação de senha |
+| Envio de e-mail | Resend via SMTP (`smtp.resend.com:587`), como no CPO. Remetente `nao-responda@bitman.sandrigo.com.br` |
 
 ## Pendências com o Rafael
 
@@ -157,6 +158,6 @@ Ações que dependem de acesso ou de decisão externa. Nenhuma bloqueia o iníci
 
 | Pendência | Necessária até |
 |---|---|
-| Provedor SMTP (e-mails de verificação e de senha), ou Mailpit no pré-lançamento | Fase 1 |
+| Resend: verificar o domínio `bitman.sandrigo.com.br` e criar uma API key própria do Bitman (só envio) para o `MAIL_PASSWORD` | Fase 1 (até então o e-mail vai para o log) |
 | Service Token do Cloudflare Access, `X-Deploy-Token` e aprovação do hash do `deploy-bitman.sh` | Fase 8 |
 | Garantir que nenhum sistema em `*.sandrigo.com.br` emita cookies com `Domain=.sandrigo.com.br` | Fase 8 |
