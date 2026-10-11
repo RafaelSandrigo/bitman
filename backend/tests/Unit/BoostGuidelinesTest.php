@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Unit;
 
+use Laravel\Boost\Mcp\Tools\RecordRule;
+use Laravel\Boost\Mcp\Tools\Tinker;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
@@ -54,12 +56,16 @@ final class BoostGuidelinesTest extends TestCase
     {
         /** @var array<string, mixed> $boost */
         $boost = json_decode($this->read('boost.json'), true, flags: JSON_THROW_ON_ERROR);
-        $config = $this->read('config/boost.php');
+        /** @var array{guidelines: array{exclude: list<string>}, skills: array{exclude: list<string>}, mcp: array{tools: array{exclude: list<string>}}, rules: array{enabled: bool}} $config */
+        $config = require $this->path('config/boost.php');
 
         $this->assertFalse($boost['cloud']);
         $this->assertFalse($boost['nightwatch']);
-        $this->assertStringContainsString("'deployments'", $config);
-        $this->assertStringContainsString('Tools\\Tinker::class', $config);
+        $this->assertContains('deployments', $config['guidelines']['exclude']);
+        $this->assertContains('deploying-to-cloud', $config['skills']['exclude']);
+        $this->assertContains(Tinker::class, $config['mcp']['tools']['exclude']);
+        $this->assertContains(RecordRule::class, $config['mcp']['tools']['exclude']);
+        $this->assertFalse($config['rules']['enabled']);
     }
 
     private function read(string $relative): string

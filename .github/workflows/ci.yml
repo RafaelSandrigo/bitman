@@ -1,0 +1,83 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend (Pint, Larastan, Pest)
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: bitman_test
+          POSTGRES_USER: bitman
+          POSTGRES_PASSWORD: bitman
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U bitman -d bitman_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      DB_USERNAME: bitman
+      DB_PASSWORD: bitman
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.5"
+          extensions: intl, pdo_pgsql, redis, pcntl, zip, bcmath
+          coverage: none
+      - run: composer install --no-interaction --no-progress --prefer-dist
+      - run: ./vendor/bin/pint --test
+      - run: ./vendor/bin/phpstan analyse --no-progress --memory-limit=512M
+      - run: ./vendor/bin/pest --colors=always
+
+  frontend:
+    name: Frontend (oxlint, tsc, Vitest, build)
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+  infra:
+    name: Infra (origem de jogos, isolamento da sandbox)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Headers e allowlist da origem de jogos
+        run: sh tests/infra/games-origin.sh
+      - name: Sobe sandbox + egress-proxy
+        run: |
+          cp .env.example .env
+          docker network create prod-network
+          docker compose up -d --build --wait git-sandbox egress-proxy
+      - name: Isolamento de rede da git-sandbox
+        run: sh tests/infra/sandbox-egress.sh

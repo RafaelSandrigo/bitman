@@ -5,29 +5,35 @@ aprovação administrativa em múltiplas etapas, execução isolada e ranking po
 
 **Documentação:** [docs/](docs/README.md) · **Plano:** [docs/plano.md](docs/plano.md)
 
-Monorepo com backend em Laravel 13 e frontend em React + TypeScript.
+> ⚠️ Este repositório roda no servidor de produção, compartilhado com outros projetos.
+> Leia [docs/convencoes.md](docs/convencoes.md#operação-segura-no-servidor-de-produção) antes de executar qualquer comando.
 
 ```
-game-hub/
-├── backend/   # API Laravel
-└── frontend/  # SPA React (Vite + TypeScript)
+bitman/
+├── backend/    # API Laravel 13 (PHP 8.5)
+├── frontend/   # SPA React + TypeScript (Vite)
+├── docker/     # imagens e configurações (nginx, php, git-sandbox, egress-proxy, postgres)
+├── tests/infra # testes de infraestrutura (origem de jogos, isolamento da sandbox)
+└── docs/       # documentação e ADRs
 ```
 
-## Backend
+## Primeira instalação
 
 ```bash
-cd backend
-composer install
-cp .env.example .env
-php artisan key:generate
-php artisan migrate
-php artisan serve        # http://localhost:8000
+cp .env.example .env      # preencha os segredos (APP_KEY, senhas, SANDBOX_TOKEN)
+make basic-auth USER=rafael PASS='senha'   # cole a linha gerada no .env (pré-lançamento)
+make init                 # volumes e dependências (dentro dos containers)
+make up                   # sobe a stack
+make migrate
 ```
 
-## Frontend
+## Dia a dia
 
 ```bash
-cd frontend
-npm install
-npm run dev              # http://localhost:5173
+make help     # todos os comandos
+make check    # lint + análise estática + todos os testes (o mesmo que o CI)
+make logs s=app
 ```
+
+Hub: https://bitman.sandrigo.com.br (autenticação básica até o lançamento) ·
+Jogos: https://bitman-games.sandrigo.com.br

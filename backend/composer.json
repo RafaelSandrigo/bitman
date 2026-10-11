@@ -7,18 +7,23 @@
     "license": "MIT",
     "require": {
         "php": "^8.3",
-        "laravel/framework": "^13.17",
-        "laravel/tinker": "^3.0"
+        "dedoc/scramble": "^0.13.47",
+        "laravel/framework": "^13.23",
+        "laravel/sanctum": "^4.0",
+        "laravel/tinker": "^3.0",
+        "spatie/laravel-permission": "^8.3"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",
+        "larastan/larastan": "^3",
         "laravel/boost": "^2.10",
         "laravel/pail": "^1.2.5",
         "laravel/pao": "^1.0.6",
         "laravel/pint": "^1.27",
         "mockery/mockery": "^1.6",
         "nunomaduro/collision": "^8.6",
-        "phpunit/phpunit": "^12.5.12"
+        "pestphp/pest": "^5",
+        "pestphp/pest-plugin-laravel": "^5"
     },
     "autoload": {
         "psr-4": {

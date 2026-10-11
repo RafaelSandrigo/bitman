@@ -4,6 +4,8 @@
 > Nada de instalação global, nada de comandos Docker fora do escopo `bitman` (sem `prune`, sem tocar
 > em containers de outros projetos nem na `prod-network`), nada de editar fora desta pasta.
 > Regras completas: `docs/convencoes.md#operação-segura-no-servidor-de-produção`.
+> Execute tudo pelo `Makefile` (`make help`): testes, composer, npm e artisan rodam dentro dos containers.
+> Os testes usam o banco `bitman_test`; nunca rode testes nem `migrate:fresh` contra o banco `bitman`.
 
 Leia [docs/README.md](docs/README.md) antes de começar. Fontes da verdade:
 - requisitos: `docs/contexto-do-produto.md`

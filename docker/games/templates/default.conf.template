@@ -1,0 +1,29 @@
+# bitman-games: origem isolada que serve APENAS artefatos publicados (ADR 0004, docs/seguranca.md J1-J3, J6, C1, C2).
+# Só três arquivos por versão publicada, em /{publicId UUID}/. Todo o resto responde 404.
+
+server {
+    listen 80;
+    server_name _;
+    server_tokens off;
+    root /srv/games;
+    autoindex off;
+    disable_symlinks on;
+    charset utf-8;
+    charset_types text/css application/javascript;
+
+    location = /health {
+        access_log off;
+        default_type text/plain;
+        return 200 "ok";
+    }
+
+    location ~ "^/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/(index\.html|style\.css|game\.js)$" {
+        limit_except GET HEAD { deny all; }
+        try_files $uri =404;
+        include /etc/nginx/conf.d/game-headers.inc;
+    }
+
+    location / {
+        return 404;
+    }
+}

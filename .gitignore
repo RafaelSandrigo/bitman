@@ -4,3 +4,11 @@ Thumbs.db
 .idea/
 .vscode/
 *.swp
+
+# Segredos e ambiente (padrão Carphook): só o .env.example é versionado
+.env
+.env.*
+!.env.example
+
+# Build do frontend servido pelo bitman-web
+frontend/dist/

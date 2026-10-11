@@ -1,0 +1,9 @@
+# Cabeçalhos de segurança de todo arquivo de jogo.
+# "sandbox allow-scripts" mantém a origem opaca mesmo se o arquivo for aberto direto numa aba.
+add_header Content-Security-Policy "default-src 'none'; script-src ${GAMES_ORIGIN}; style-src ${GAMES_ORIGIN}; img-src ${GAMES_ORIGIN} data:; connect-src 'none'; form-action 'none'; base-uri 'none'; frame-ancestors ${HUB_ORIGIN}; sandbox allow-scripts" always;
+add_header Cache-Control "no-store, no-transform" always;
+add_header X-Content-Type-Options "nosniff" always;
+add_header Referrer-Policy "no-referrer" always;
+add_header Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=(), fullscreen=(self)" always;
+add_header Cross-Origin-Opener-Policy "same-origin" always;
+add_header X-Robots-Tag "noindex, nofollow" always;

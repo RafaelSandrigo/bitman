@@ -1,0 +1,11 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    # docs/convencoes.md: nível máximo viável, começando em 8.
+    level: 8
+    paths:
+        - app
+        - bootstrap/app.php
+        - database
+        - routes

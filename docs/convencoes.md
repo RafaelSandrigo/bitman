@@ -16,7 +16,8 @@ Qualquer comando roda em produção. Regras, para pessoas e agentes de IA:
 3. **Nada fora da pasta do projeto.** Não edite arquivos de outros projetos nem do sistema (`/etc`, systemd,
    crontab, firewall). Ler outros projetos como referência é permitido. A exceção é `deploy-hub/scripts/deploy-bitman.sh`
    e o registro do hook, feitos uma vez e aprovados pelo Rafael.
-4. **Portas:** só as reservadas para o projeto (`8200`–`8203`, `3200`–`3201`), publicadas em `127.0.0.1` e só no compose de dev.
+4. **Sem portas no host.** Nenhum serviço usa `ports:`; o acesso é pelo Traefik ou por `docker compose exec`.
+   Use os alvos do `Makefile` (`make help`), que já trabalham só no projeto `bitman`.
 5. **Recursos limitados.** Todo container tem limites de CPU e memória para não degradar os vizinhos.
    Builds e testes pesados não rodam em paralelo com deploys.
 6. **Na dúvida, pergunte antes.** Qualquer ação que possa afetar outro projeto, o Docker do host ou o

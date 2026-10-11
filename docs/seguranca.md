@@ -24,7 +24,7 @@ como cada uma é mitigada e onde a mitigação é verificada. Uma mitigação se
 |---|---|---|---|
 | G1 | Command injection via URL/ref | Comandos sempre como **array de argumentos** (sem shell). `RepositoryUrl` e `GitRef` como value objects: a ref casa com `^[A-Za-z0-9._/-]{1,100}$`, não começa com `-` e não contém `..`. Uso de `--end-of-options` | Testes unitários dos VOs com payloads maliciosos |
 | G2 | Protocolos perigosos (`file://`, `ext::`, `ssh`, `git://`) | Somente `https`. `GIT_ALLOW_PROTOCOL=https`, `-c protocol.allow=never -c protocol.https.allow=always` | Teste da sandbox com cada protocolo |
-| G3 | SSRF / acesso à rede interna (LAN do servidor, outros projetos) | Allowlist de hosts (`github.com`, `gitlab.com`, `codeberg.org`) no value object **e** na rede: a sandbox fica numa rede `internal: true`, e sua única saída é o `bitman-egress-proxy`, que só aceita `CONNECT` para esses hosts na porta 443. URL sem credenciais, sem porta, sem IP literal. `http.followRedirects=false` | Testes do VO, teste de integração com redirect e teste de que a sandbox não alcança `bitman-postgres` nem um IP da LAN |
+| G3 | SSRF / acesso à rede interna (LAN do servidor, outros projetos) | Allowlist de hosts (`github.com`, `gitlab.com`, `codeberg.org`) no value object **e** na rede: a sandbox fica numa rede `internal: true`, e sua única saída é o `egress-proxy`, que só aceita `CONNECT` para esses hosts na porta 443. URL sem credenciais, sem porta, sem IP literal. `http.followRedirects=false` | Testes do VO, teste de integração com redirect e teste de que a sandbox não alcança `postgres` nem um IP da LAN |
 | G4 | Hooks e configuração maliciosa | Repositório *bare* criado pela sandbox. `GIT_CONFIG_NOSYSTEM=1`, `GIT_CONFIG_GLOBAL=/dev/null`, `core.hooksPath=/dev/null`. Hooks nunca são transferidos | Teste de integração |
 | G5 | Symlinks, submodules e CVEs de checkout | **Não há checkout.** Árvore lida com `git ls-tree` e blobs com `git cat-file`. Sem `--recurse-submodules`. Modos `120000`/`160000` bloqueiam a versão | Repositórios-fixture maliciosos |
 | G6 | Path traversal | Os caminhos de armazenamento são montados com **nossos** IDs, nunca com nomes vindos do Git. Só os paths exatos da allowlist são extraídos | Testes da `RepositoryPolicy` e do `ArtifactStore` |
@@ -60,6 +60,14 @@ como cada uma é mitigada e onde a mitigação é verificada. Uma mitigação se
 | C2 | Cache da Cloudflare continua servindo um jogo bloqueado ou retirado (`.js` e `.css` entram no cache da Cloudflare por padrão) | `bitman-games` responde com `Cache-Control: no-store` (a Cloudflare não armazena respostas `no-store`), então cada acesso chega à origem. O bloqueio remove o diretório `served`, e a origem passa a responder 404 na hora. Versões reprovadas **nunca** chegam ao `served`. Uma Cache Rule com Edge TTL que ignore a origem anularia isso, por isso nenhuma deve ser criada para `*.sandrigo.com.br` | Teste de headers + teste de fumaça (bloquear → 404 pela URL pública) |
 | C3 | Rate limit inútil porque todo tráfego chega com o IP do proxy | `real_ip_header CF-Connecting-IP` aceito só a partir da rede do Traefik + `TrustProxies` restrito | Teste de feature com headers forjados vindos de fora da rede confiável |
 | C4 | Cookie de sessão sem `Secure`, porque a origem fala HTTP com o Traefik | `X-Forwarded-Proto` confiável + `SESSION_SECURE_COOKIE=true` + prefixo `__Host-` | Teste de configuração |
+
+### Operação no servidor de produção
+
+| # | Ameaça | Mitigação | Verificação |
+|---|---|---|---|
+| O1 | Testes apagam ou poluem os dados reais (o projeto é desenvolvido no servidor de produção) | `phpunit.xml` força `DB_DATABASE=bitman_test` em `<env>` **e** `<server>` (o Laravel lê `$_SERVER` primeiro: só `<env>` não bastava, e o teste-trava pegou isso) | `tests/Feature/TestEnvironmentTest.php` |
+| O2 | Exposição pública antes do lançamento | Autenticação básica no Traefik + `X-Robots-Tag: noindex` no hub; `noindex` também no host de jogos | Verificação manual com `curl` (401 sem senha) |
+| O3 | Um comando do projeto derruba os vizinhos | Regras de [convencoes.md](convencoes.md#operação-segura-no-servidor-de-produção), `Makefile` restrito ao projeto e limites de CPU/memória em todo container | Revisão de PR |
 
 ### Contas, API e scores
 

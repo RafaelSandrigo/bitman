@@ -15,11 +15,14 @@ roteamento e deploy já padronizados (referências: `deploy-hub/README.md`,
   `bitman-games` entram na rede externa `prod-network`. Todo o resto fica em redes internas do projeto.
 - Hosts: `bitman.sandrigo.com.br` (hub) e `bitman-games.sandrigo.com.br` (jogos), ambos de primeiro nível,
   para serem cobertos pelo certificado universal da Cloudflare.
-- Compose em três arquivos: `base`, `dev` (`docker-compose.yml`) e `prod`.
-- Dados em volumes Docker nomeados. Segredos de produção em `~/.local/share/bitman/` (o repositório está em NTFS).
+- **Um único ambiente** (decisão do Rafael, 2026-10-11): sem ambiente de dev separado. O projeto é desenvolvido
+  direto no servidor com um único `docker-compose.yml`, em **modo pré-lançamento** (autenticação básica no Traefik,
+  `noindex`, código por bind mount). Os testes rodam nos containers, no banco `bitman_test`.
+- Dados em volumes Docker nomeados. Segredos no `.env` da raiz do projeto, ignorado pelo git e injetado via `env_file`, como no Carphook
+  (decisão do Rafael). Só o `.env.example` é versionado.
 - **Este diretório é produção.** Toda execução é restrita ao projeto ([convencoes.md](../convencoes.md#operação-segura-no-servidor-de-produção)).
 - CI no GitHub Actions. O deploy segue o fluxo do deploy-hub (`deploy-bitman.sh` + hook + hash aprovado pelo Rafael).
-- E-mail: Mailpit em dev. O SMTP de produção é configurado por variável de ambiente.
+- E-mail: definido no início da Fase 1 (SMTP real, ou Mailpit atrás da autenticação básica durante o pré-lançamento).
 
 ## Consequências
 - O projeto convive com os demais sem colisão de nomes ou portas, e sem expor nada além dos dois hosts.

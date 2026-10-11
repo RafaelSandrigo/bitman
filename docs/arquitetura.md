@@ -31,16 +31,16 @@ flowchart LR
         GAMES[bitman-games<br/>nginx estático, somente leitura]
     end
 
-    subgraph bitman_internal[bitman_internal: rede interna]
-        APP[bitman-app<br/>Laravel php-fpm]
-        QUEUE[bitman-queue<br/>filas default / ingestion]
-        PG[(bitman-postgres)]
-        RD[(bitman-redis)]
+    subgraph bitman_internal[internal: sem internet]
+        APP[app<br/>Laravel php-fpm]
+        QUEUE[queue<br/>filas ingestion / default]
+        PG[(postgres)]
+        RD[(redis)]
     end
 
-    subgraph bitman_sandbox[bitman_sandbox: interna, sem internet]
-        SBX[bitman-git-sandbox<br/>sem DB, Redis ou volumes]
-        PROXY[bitman-egress-proxy<br/>allowlist de hosts Git]
+    subgraph bitman_sandbox[sandbox: sem internet]
+        SBX[git-sandbox<br/>sem DB, Redis ou volumes]
+        PROXY[egress-proxy<br/>allowlist de hosts Git]
     end
 
     TRAEFIK --> WEB & GAMES
@@ -61,44 +61,59 @@ flowchart LR
 Ela segue as convenções do servidor compartilhado ([ADR 0010](adr/0010-infraestrutura-homelab.md)):
 
 - **Borda:** navegador → Cloudflare (o TLS termina aqui) → túnel → Traefik v3 compartilhado → `bitman-web` / `bitman-games`.
-  Não há `ports:` em produção, nem certificados, nem outro proxy de borda.
+  Não há `ports:`, nem certificados, nem outro proxy de borda.
 - **Domínios:** hub em `bitman.sandrigo.com.br`, jogos em `bitman-games.sandrigo.com.br`. São subdomínios de
   primeiro nível porque o certificado universal da Cloudflare cobre só `*.sandrigo.com.br`. O túnel já
   encaminha `*.sandrigo.com.br` ao Traefik, que roteia pelo `Host` declarado nas labels dos containers.
   **Não há configuração na Cloudflare.**
-- **Compose:** `docker-compose.base.yml` (serviços), `docker-compose.yml` (dev: portas locais, Mailpit,
-  Vite) e `docker-compose.prod.yml` (sem portas, labels do Traefik, `prod-network` externa).
-- **Dados:** volumes Docker nomeados (PostgreSQL, Redis, quarentena e artefatos), nunca bind mount em `/mnt/Dados`
-  (é NTFS, onde `chmod` não tem efeito). Os segredos de produção ficam em `~/.local/share/bitman/`, fora do repositório.
-- **Deploy:** GitHub Actions (CI verde em `main`) → `POST https://deploy.sandrigo.com.br/hooks/deploy-bitman`
+- **Um ambiente só:** não existe ambiente de desenvolvimento separado. O projeto é desenvolvido direto no
+  servidor, em `/mnt/Dados/prog/prod/bitman`, num único `docker-compose.yml` (`name: bitman`), sempre
+  operado pelo `Makefile`. Até o lançamento vale o **modo pré-lançamento** (abaixo).
+- **Dados:** volumes Docker nomeados (PostgreSQL, Redis, quarentena, artefatos e `node_modules` do frontend), nunca
+  bind mount em `/mnt/Dados` (é NTFS, onde `chmod` não tem efeito). Os segredos ficam no `.env` da raiz, ignorado
+  pelo git e entregue aos containers por `env_file` e, montado como `backend/.env`, somente leitura (padrão Carphook).
+  Só o `.env.example` é versionado.
+- **Testes:** rodam dentro dos containers, no banco `bitman_test` do mesmo PostgreSQL. O `phpunit.xml` força esse banco,
+  e um teste-trava (`tests/Feature/TestEnvironmentTest.php`) falha se algum dia apontar para outro.
+- **Deploy (a partir do lançamento):** GitHub Actions (CI verde em `main`) → `POST https://deploy.sandrigo.com.br/hooks/deploy-bitman`
   → `deploy-hub/scripts/deploy-bitman.sh` (executado só depois que o Rafael aprova o hash).
+
+### Modo pré-lançamento
+
+Enquanto não há usuários reais:
+
+| Item | Pré-lançamento | No lançamento (ver [plano.md](plano.md#checklist-de-lançamento)) |
+|---|---|---|
+| Acesso ao hub | Autenticação básica no Traefik (`BITMAN_BASIC_AUTH`) + `X-Robots-Tag: noindex` | Removidos |
+| Código PHP | Bind mount de `./backend` (mudança vale na hora) | Imagem com o código embutido, sem dependências de dev |
+| Frontend | Container `frontend` com `vite build --watch` gerando `frontend/dist` | Build feito na imagem do `bitman-web` |
+| OPcache | Revalida timestamps | `validate_timestamps=0` |
+
+O host de jogos **não** tem autenticação básica: o navegador não pede senha para recursos de um iframe isolado de
+outra origem, e esse host só serve jogos publicados, em caminhos UUID não adivinháveis, com `noindex`.
 
 ## Containers
 
 | Serviço | Papel | Redes | Observações |
 |---|---|---|---|
-| `bitman-web` | nginx: serve o build da SPA e faz proxy de `/api` e `/sanctum` para `bitman-app` | prod-network, internal | SPA e API na **mesma origem** (cookies Sanctum sem CORS). Healthcheck em `127.0.0.1` |
-| `bitman-games` | nginx estático da origem de jogos | prod-network | Monta `artefatos/served` como somente leitura e define os headers de segurança. Não fala com nenhum outro serviço |
-| `bitman-app` | Laravel (php-fpm 8.5) | internal | — |
-| `bitman-queue` | `queue:work` (filas `default` e `ingestion`) | internal, sandbox | É o único que fala com a sandbox |
-| `bitman-scheduler` | `schedule:work` (expirar sessões, limpar quarentena) | internal | — |
-| `bitman-postgres` | Banco principal | internal | — |
-| `bitman-redis` | Fila, cache e rate limit | internal | — |
-| `bitman-git-sandbox` | Busca repositórios e devolve um manifesto | sandbox | Usuário não-root, rootfs read-only, `tmpfs` limitado, `cap_drop: ALL`, `no-new-privileges`, limites de CPU, memória e pids |
-| `bitman-egress-proxy` | Proxy HTTP `CONNECT` que só permite `github.com`, `gitlab.com` e `codeberg.org` na porta 443 | sandbox, egress | Bloqueia a rede local do servidor e os outros projetos. O único caminho da sandbox para a internet |
-| `bitman-mailpit` | Captura de e-mails (só em dev) | internal | — |
+| `bitman-web` | nginx: serve `frontend/dist` e encaminha `/api`, `/sanctum` e `/up` para o php-fpm | prod-network, internal | SPA e API na **mesma origem** (cookies Sanctum sem CORS). CSP do hub e IP real via `CF-Connecting-IP` |
+| `bitman-games` | nginx estático da origem de jogos | prod-network | Monta o subdiretório `served` do volume de artefatos, somente leitura. Só serve `/{uuid}/{index.html,style.css,game.js}`; o resto é 404 |
+| `app` | Laravel (php-fpm 8.5) | internal, egress | Imagem `bitman-php` (construída só por este serviço) |
+| `queue` | `queue:work` (filas `ingestion` e `default`) | internal, egress, sandbox | É o único que fala com a sandbox |
+| `scheduler` | `schedule:work` | internal, egress | — |
+| `frontend` | `vite build --watch` (pré-lançamento) | egress | `node_modules` em volume próprio (binários da imagem alpine) |
+| `postgres` | PostgreSQL 17 (bancos `bitman` e `bitman_test`) | internal | — |
+| `redis` | Redis 8.2 com senha: fila, cache, sessão e rate limit | internal | — |
+| `git-sandbox` | Busca repositórios e devolve um manifesto (stub até a Fase 3) | sandbox | Usuário não-root, rootfs read-only, `tmpfs` de 256 MB, `cap_drop: ALL`, `no-new-privileges`, limites de CPU, memória e pids |
+| `egress-proxy` | tinyproxy: só `CONNECT` na 443 para `github.com`, `gitlab.com` e `codeberg.org` | sandbox, egress | O único caminho da sandbox para a internet. Bloqueia a LAN e os outros projetos |
 
-Redes do projeto: `bitman_internal` (`internal: true`), `bitman_sandbox` (`internal: true`, sem rota
-para a internet) e `bitman_egress` (bridge com saída). Só `bitman-web` e `bitman-games` entram na `prod-network`.
+Os containers ficam com os nomes `bitman-<serviço>-1`. As redes do projeto são `internal` (`internal: true`: banco e
+cache sem internet), `egress` (saída para a internet: SMTP e npm) e `sandbox` (`internal: true`, com saída só pelo proxy).
+Só `bitman-web` e `bitman-games` entram na `prod-network`. Todo container tem limite de CPU e memória.
 
-**Desenvolvimento** (mesma máquina, portas só em `127.0.0.1`): hub em `http://localhost:8200`
-(Vite em `8201`, com proxy de `/api` e `/sanctum`), jogos em `http://127.0.0.1:8202`, Mailpit em
-`http://localhost:8203`, PostgreSQL em `3200` e Redis em `3201`. Hub e jogos usam hosts diferentes
-(`localhost` × `127.0.0.1`), então os cookies do hub nunca são enviados à origem de jogos.
-
-**Atrás da Cloudflare:** o Laravel confia apenas no proxy da rede interna (`TrustProxies`) e obtém o IP
-real do cliente via `CF-Connecting-IP` (no nginx, com `set_real_ip_from` restrito à rede do Traefik). Isso é
-essencial para o rate limit. O esquema `https` chega por `X-Forwarded-Proto`.
+**Atrás da Cloudflare:** o nginx `bitman-web` obtém o IP real do cliente por `CF-Connecting-IP` (`set_real_ip_from` só para
+redes privadas) e o repassa ao PHP como `REMOTE_ADDR`, o que é essencial para o rate limit. Como o acesso público é sempre
+HTTPS e o trecho Traefik → nginx é HTTP interno, o nginx informa `HTTPS=on` ao PHP.
 
 ## Backend: módulos e camadas
 

@@ -1,6 +1,9 @@
 <?php
 
 declare(strict_types=1);
+use Laravel\Boost\Mcp\Tools\BrowserLogs;
+use Laravel\Boost\Mcp\Tools\RecordRule;
+use Laravel\Boost\Mcp\Tools\Tinker;
 
 return [
 
@@ -80,9 +83,9 @@ return [
     'mcp' => [
         'tools' => [
             'exclude' => [
-                Laravel\Boost\Mcp\Tools\Tinker::class,
-                Laravel\Boost\Mcp\Tools\RecordRule::class,
-                Laravel\Boost\Mcp\Tools\BrowserLogs::class,
+                Tinker::class,
+                RecordRule::class,
+                BrowserLogs::class,
             ],
         ],
     ],

@@ -6,32 +6,31 @@ segurança da ingestão vêm antes das funcionalidades sociais.
 
 Status: ⬜ não iniciada · 🟨 em andamento · ✅ concluída
 
-## Fase 0 — Fundação ⬜
+## Fase 0 — Fundação ✅
 
 **Objetivo:** ambiente reprodutível e esteira de qualidade antes de qualquer regra de negócio.
 
 - ✅ Laravel Boost instalado com proteções contra recomendações comerciais ([ADR 0009](adr/0009-laravel-boost-restrito.md)).
+- ✅ `docker-compose.yml` único (`name: bitman`) com `bitman-web`, `bitman-games`, `app`, `queue`, `scheduler`,
+  `frontend`, `postgres`, `redis`, `git-sandbox` (stub) e `egress-proxy`; redes `internal`, `egress` e `sandbox`;
+  limites de recursos; healthchecks; labels do Traefik com autenticação básica (pré-lançamento).
+- ✅ Imagem PHP 8.5 (intl, pdo_pgsql, redis, pcntl, zip, bcmath, opcache) com Composer.
+- ✅ nginx do hub (SPA + API na mesma origem, CSP, IP real) e da origem de jogos (CSP `sandbox`, `no-store, no-transform`, allowlist de arquivos).
+- ✅ Backend: Pest 5, Larastan (nível 8), Pint (`strict_types`), Sanctum (modo SPA), spatie/laravel-permission e Scramble.
+  Testes de arquitetura das camadas e módulos. Teste-trava do banco de testes. Scaffold web removido.
+- ✅ Frontend: React Router, TanStack Query, Zod, React Hook Form, Tailwind, Vitest, Testing Library e MSW.
+  Estrutura `app/ features/ shared/`. Cliente HTTP que valida toda resposta com Zod.
+- ✅ Testes de infraestrutura: `tests/infra/games-origin.sh` e `tests/infra/sandbox-egress.sh`.
+- ✅ `Makefile` (`make help`) restrito ao projeto.
+- ✅ CI no GitHub Actions: backend, frontend e infra.
 
-- Docker Compose (`base`, `dev`, `prod`) com os serviços, as redes e as portas de
-  [arquitetura.md](arquitetura.md#containers): `bitman-web`, `bitman-games`, `bitman-app` (PHP 8.5),
-  `bitman-queue`, `bitman-scheduler`, `bitman-postgres`, `bitman-redis`, `bitman-git-sandbox` (stub),
-  `bitman-egress-proxy` e `bitman-mailpit`. Healthchecks e labels do Traefik só no `prod`.
-- Backend: Pest, Larastan, Pint, Sanctum, spatie/laravel-permission
-  e Scramble. Estrutura `app/Modules` e `app/Shared`. Testes `arch()` das camadas.
-- Frontend: React Router, TanStack Query, Zod, React Hook Form, Tailwind, Vitest,
-  Testing Library e MSW. Estrutura `app/ features/ shared/`. Proxy do Vite para a API.
-- `Makefile`: `up`, `down`, `test`, `check`, `fresh`.
-- CI (GitHub Actions): lint, análise estática e testes do backend (com PostgreSQL),
-  do frontend e build das imagens. Workflow `deploy` no padrão do garagem-saas (dispara o deploy-hub).
-- `deploy-hub/scripts/deploy-bitman.sh` + registro em `hooks.json.tmpl` (rascunho; ativado na Fase 8).
-- Remover o scaffold padrão (welcome, assets do Vite).
-
-**Aceite:** `make up && make check` passa numa máquina limpa, e o CI está verde.
+**Aceite:** `make check` passa no servidor, e o CI está verde.
 
 ## Fase 1 — Identidade, acesso e auditoria ⬜
 
 - Registro, login e logout (Sanctum SPA), com rate limit no login.
-- Verificação de e-mail (obrigatória para jogar e submeter) e recuperação de senha. Mailpit em dev (A5).
+- Verificação de e-mail (obrigatória para jogar e submeter) e recuperação de senha (A5). Decidir no início da fase:
+  SMTP real, ou Mailpit atrás da autenticação básica enquanto durar o pré-lançamento.
 - Roles `player` (padrão), `developer` e `admin`, mais permissões granulares.
 - Comando `php artisan user:grant-role {email} {role}` (bootstrap do primeiro admin).
 - Cadastro aberto (role `player`). Somente o admin promove ou rebaixa `developer` pelo painel.
@@ -80,7 +79,8 @@ responde "quem aprovou qual hash, quando".
 ## Fase 5 — Publicação e execução isolada ⬜
 
 - `PublishVersion` (I6–I8): verifica os hashes, grava o `archive` write-once, cria
-  `served/{publicId}` e marca a versão anterior como `superseded`.
+  `served/{publicId}` e marca a versão anterior como `superseded`. Arquivos com `0644` e diretórios
+  com `0755`: o worker do nginx `bitman-games` precisa conseguir lê-los (descoberto no teste de infra da Fase 0).
 - Retirar versão e bloquear/desbloquear jogo (J6).
 - nginx `games` com CSP e headers (J1–J3) e testes de headers.
 - Página inicial pública (cards de jogos publicados) e página `/games/{slug}` com o
@@ -113,11 +113,24 @@ exatamente um registro. A limitação dos scores aparece na UI do ranking.
 
 ## Fase 8 — Endurecimento e implantação ⬜
 
+- Executar o [checklist de lançamento](#checklist-de-lançamento).
 - Revisão de segurança completa contra [seguranca.md](seguranca.md).
-- `docs/implantacao.md`: labels do Traefik para `bitman` e `bitman-games`, segredos em `~/.local/share/bitman/`, ativação do hook do deploy-hub, backups dos volumes
+- `docs/implantacao.md`: labels do Traefik para `bitman` e `bitman-games`, segredos no `.env` da raiz (fora do git), ativação do hook do deploy-hub, backups dos volumes
   (PostgreSQL e artefatos) e rotação de logs.
 - Teste de fumaça pós-deploy: headers de segurança e hash dos arquivos servidos (C1, C2).
 - Observabilidade mínima: logs estruturados, alertas de `fetch_failed` e de scores sinalizados.
+
+## Checklist de lançamento
+
+Executado quando o Bitman sair do pré-lançamento:
+
+- [ ] Remover os middlewares `bitman-auth` e `bitman-noindex` das labels do `bitman-web` e o `noindex` do `index.html`.
+- [ ] Imagem PHP de produção com o código embutido, `composer install --no-dev` (o Boost sai junto) e `opcache.validate_timestamps=0`.
+- [ ] Build do frontend dentro da imagem do `bitman-web`; remover o serviço `frontend` (watch).
+- [ ] Conferir `APP_ENV=production` e `APP_DEBUG=false`.
+- [ ] Ativar o deploy pelo deploy-hub (script, hook, tokens e aprovação do hash).
+- [ ] Teste de fumaça pós-deploy (headers e hash dos arquivos servidos).
+- [ ] Backups dos volumes `postgres_data` e `artifacts`.
 
 ## Fora do escopo do MVP
 
@@ -144,6 +157,6 @@ Ações que dependem de acesso ou de decisão externa. Nenhuma bloqueia o iníci
 
 | Pendência | Necessária até |
 |---|---|
-| Provedor SMTP de produção (e-mails de verificação e de senha) | Fase 8 |
+| Provedor SMTP (e-mails de verificação e de senha), ou Mailpit no pré-lançamento | Fase 1 |
 | Service Token do Cloudflare Access, `X-Deploy-Token` e aprovação do hash do `deploy-bitman.sh` | Fase 8 |
 | Garantir que nenhum sistema em `*.sandrigo.com.br` emita cookies com `Domain=.sandrigo.com.br` | Fase 8 |

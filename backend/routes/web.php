@@ -1,7 +1,6 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
+declare(strict_types=1);
 
-Route::get('/', function () {
-    return view('welcome');
-});
+// O backend não serve páginas: a SPA React é servida pelo bitman-web (nginx).
+// O grupo "web" continua existindo para a sessão da SPA (Sanctum, CSRF).
