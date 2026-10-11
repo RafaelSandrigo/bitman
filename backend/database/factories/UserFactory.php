@@ -4,44 +4,52 @@ declare(strict_types=1);
 
 namespace Database\Factories;
 
-use App\Models\User;
+use App\Modules\Identity\Domain\Role;
+use App\Modules\Identity\Domain\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
 /**
+ * Todo usuário criado pela factory tem a role player, como no cadastro real.
+ *
  * @extends Factory<User>
  */
-class UserFactory extends Factory
+final class UserFactory extends Factory
 {
-    /**
-     * The current password being used by the factory.
-     */
+    protected $model = User::class;
+
     protected static ?string $password;
 
-    /**
-     * Define the model's default state.
-     *
-     * @return array<string, mixed>
-     */
+    /** @return array<string, mixed> */
     public function definition(): array
     {
         return [
             'name' => fake()->name(),
             'email' => fake()->unique()->safeEmail(),
             'email_verified_at' => now(),
-            'password' => static::$password ??= Hash::make('password'),
+            'password' => self::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),
         ];
     }
 
-    /**
-     * Indicate that the model's email address should be unverified.
-     */
+    public function configure(): static
+    {
+        return $this->afterCreating(fn (User $user) => $user->assignRole(Role::Player));
+    }
+
     public function unverified(): static
     {
-        return $this->state(fn (array $attributes) => [
-            'email_verified_at' => null,
-        ]);
+        return $this->state(fn (array $attributes) => ['email_verified_at' => null]);
+    }
+
+    public function developer(): static
+    {
+        return $this->afterCreating(fn (User $user) => $user->assignRole(Role::Developer));
+    }
+
+    public function admin(): static
+    {
+        return $this->afterCreating(fn (User $user) => $user->assignRole(Role::Admin));
     }
 }

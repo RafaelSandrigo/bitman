@@ -24,7 +24,14 @@ cp .env.example .env      # preencha os segredos (APP_KEY, senhas, SANDBOX_TOKEN
 make basic-auth USER=rafael PASS='senha'   # cole a linha gerada no .env (pré-lançamento)
 make init                 # volumes e dependências (dentro dos containers)
 make up                   # sobe a stack
-make migrate
+make migrate              # migrations + roles/permissões
+```
+
+Primeiro admin: crie a conta no hub, confirme o e-mail (enquanto o Resend não estiver configurado,
+o link aparece em `make logs s=queue`) e rode:
+
+```bash
+make artisan c="user:grant-role seu@email admin"
 ```
 
 ## Dia a dia

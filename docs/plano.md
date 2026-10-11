@@ -26,19 +26,27 @@ Status: ⬜ não iniciada · 🟨 em andamento · ✅ concluída
 
 **Aceite:** `make check` passa no servidor, e o CI está verde.
 
-## Fase 1 — Identidade, acesso e auditoria ⬜
+## Fase 1 — Identidade, acesso e auditoria ✅
 
-- Registro, login e logout (Sanctum SPA), com rate limit no login.
-- Verificação de e-mail (obrigatória para jogar e submeter) e recuperação de senha (A5). Envio pelo Resend via SMTP,
-  como no CPO.
-- Roles `player` (padrão), `developer` e `admin`, mais permissões granulares.
-- Comando `php artisan user:grant-role {email} {role}` (bootstrap do primeiro admin).
-- Cadastro aberto (role `player`). Somente o admin promove ou rebaixa `developer` pelo painel.
-- Módulo Audit: `audit_entries` append-only (trigger), listener síncrono e consulta por entidade.
-- Frontend: telas de auth, layout público e admin, guards de rota.
+- ✅ Cadastro, login e logout com Fortify headless em `/api/v1/auth` ([ADR 0011](adr/0011-autenticacao-com-fortify.md)).
+  Rate limit no login por e-mail + IP (A2) e em todas as rotas de autenticação.
+- ✅ Verificação de e-mail e recuperação de senha, com e-mails em pt-BR enviados pela fila e links para a SPA (A5).
+  O "esqueci a senha" não revela se a conta existe. Envio pelo Resend via SMTP, como no CPO (falta a API key).
+- ✅ Usuários com ULID. Roles `player` (padrão), `developer` e `admin` como enums do domínio, com permissões granulares
+  sincronizadas pelo seeder (`make migrate`).
+- ✅ Comando `php artisan user:grant-role {email} {role}` (bootstrap do primeiro admin), auditado com ator nulo.
+- ✅ Cadastro aberto como `player`. Só o admin promove ou rebaixa `developer` pelo painel, e só quem confirmou o e-mail.
+- ✅ Módulo Audit: `audit_entries` append-only (trigger contra `UPDATE`/`DELETE`/`TRUNCATE`), contrato `Auditable`,
+  listener síncrono na transação da Action, IP do cliente e consulta por entidade com paginação por cursor.
+- ✅ Frontend:
+  - entrar, criar conta, esqueci a senha, redefinir senha e confirmar e-mail;
+  - aviso para quem não confirmou o e-mail;
+  - painel admin (usuários e auditoria);
+  - guards de rota, com `?next=` restrito a caminhos internos.
 
-**Aceite:** I12 coberta por um teste genérico que percorre as rotas administrativas.
-A concessão de role gera um `AuditEntry`.
+**Aceite:** ✅ I12 coberta por um teste genérico que percorre todas as rotas administrativas (401/403).
+✅ A concessão de role gera um `AuditEntry` na mesma transação, e não o gera se a transação falhar.
+✅ Fluxo verificado em produção (cadastro → e-mail → confirmação → login/logout → CSRF), e a conta de teste foi removida.
 
 ## Fase 2 — Catálogo e submissão ⬜
 
@@ -131,6 +139,7 @@ Executado quando o Bitman sair do pré-lançamento:
 - [ ] Ativar o deploy pelo deploy-hub (script, hook, tokens e aprovação do hash).
 - [ ] Teste de fumaça pós-deploy (headers e hash dos arquivos servidos).
 - [ ] Backups dos volumes `postgres_data` e `artifacts`.
+- [ ] Resend configurado (`MAIL_MAILER=smtp` e `MAIL_PASSWORD`) e um e-mail real de verificação recebido. Depois, remover o `MAIL_LOG_CHANNEL`.
 
 ## Fora do escopo do MVP
 
@@ -158,6 +167,7 @@ Ações que dependem de acesso ou de decisão externa. Nenhuma bloqueia o iníci
 
 | Pendência | Necessária até |
 |---|---|
-| Resend: verificar o domínio `bitman.sandrigo.com.br` e criar uma API key própria do Bitman (só envio) para o `MAIL_PASSWORD` | Fase 1 (até então o e-mail vai para o log) |
+| Resend: verificar o domínio `bitman.sandrigo.com.br` e criar uma API key própria do Bitman (só envio) para o `MAIL_PASSWORD`. Até lá, `MAIL_MAILER=log` e os e-mails aparecem em `make logs s=queue` | Antes do lançamento |
+| Criar a própria conta no hub e virar admin: `make artisan c="user:grant-role seu@email admin"` (precisa do e-mail confirmado) | Fase 2 |
 | Service Token do Cloudflare Access, `X-Deploy-Token` e aprovação do hash do `deploy-bitman.sh` | Fase 8 |
 | Garantir que nenhum sistema em `*.sandrigo.com.br` emita cookies com `Domain=.sandrigo.com.br` | Fase 8 |

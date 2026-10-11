@@ -115,6 +115,17 @@ return [
             'processors' => [PsrLogMessageProcessor::class],
         ],
 
+        // MAIL_MAILER=log grava o e-mail em nível debug; este canal o mantém visível
+        // nos logs do container enquanto o envio real (Resend) não estiver configurado.
+        'mail' => [
+            'driver' => 'monolog',
+            'level' => 'debug',
+            'handler' => StreamHandler::class,
+            'handler_with' => [
+                'stream' => 'php://stderr',
+            ],
+        ],
+
         'syslog' => [
             'driver' => 'syslog',
             'level' => env('LOG_LEVEL', 'debug'),

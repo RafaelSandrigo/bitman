@@ -18,7 +18,8 @@ Leia [docs/README.md](docs/README.md) antes de começar. Fontes da verdade:
 Regras inegociáveis:
 - TDD: o teste vem antes do código de produção. Testes citam o ID da invariante ou ameaça.
 - Conteúdo vindo do Git ou dos jogos é sempre não confiável. Nunca vai para shell, path ou HTML sem tratamento.
-- Toda ação administrativa passa por uma Policy dentro da Action e gera um AuditEntry.
+- Toda ação administrativa autoriza pelo Gate dentro da Action (permissão ou Policy), gera um AuditEntry
+  (evento `Auditable` despachado na transação) e tem a rota no grupo `/api/v1/admin` de `routes/api.php`.
 - Código em inglês; docs, commits e UI em pt-BR. A documentação muda no mesmo PR que o código.
 
 Laravel Boost (backend): as diretrizes geradas por ele em `backend/CLAUDE.md` e `backend/AGENTS.md`

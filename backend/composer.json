@@ -8,6 +8,7 @@
     "require": {
         "php": "^8.3",
         "dedoc/scramble": "^0.13.47",
+        "laravel/fortify": "^1",
         "laravel/framework": "^13.23",
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^3.0",

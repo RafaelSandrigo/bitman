@@ -39,8 +39,9 @@ build: ## Reconstrói as imagens do projeto
 sh: ## Shell no container da aplicação
 	$(COMPOSE) exec app sh
 
-migrate: ## Executa as migrations
+migrate: ## Executa as migrations e sincroniza roles/permissões com o domínio
 	$(COMPOSE) exec -T app php artisan migrate --force
+	$(COMPOSE) exec -T app php artisan db:seed --class=RolesAndPermissionsSeeder --force
 
 artisan: ## php artisan (ex.: make artisan c="route:list")
 	$(COMPOSE) exec -T app php artisan $(c)

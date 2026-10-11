@@ -11,5 +11,5 @@ it('não serve páginas web: a SPA é servida pelo nginx', function (): void {
 });
 
 it('responde JSON 401 na API para quem não está autenticado', function (): void {
-    $this->getJson('/api/user')->assertUnauthorized()->assertJsonStructure(['message']);
+    $this->getJson('/api/v1/me')->assertUnauthorized()->assertJsonStructure(['message']);
 });

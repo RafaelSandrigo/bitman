@@ -2,7 +2,7 @@ import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
 import { server } from '../../test/server'
-import { ApiError, apiGet } from './http'
+import { ApiError, apiGet, apiSend, errorMessage, fieldErrors, NoContent } from './http'
 
 const Health = z.object({ status: z.literal('ok') })
 
@@ -38,5 +38,66 @@ describe('apiGet', () => {
     await apiGet('/api/health', Health)
 
     expect(seen).toEqual({ xsrf: 'abc==', accept: 'application/json' })
+  })
+})
+
+describe('apiSend', () => {
+  it('busca o cookie CSRF do Sanctum antes da primeira requisição que altera estado', async () => {
+    const calls: string[] = []
+    server.use(
+      http.get('/sanctum/csrf-cookie', () => {
+        calls.push('csrf')
+        document.cookie = 'XSRF-TOKEN=novo'
+        return new HttpResponse(null, { status: 204 })
+      }),
+      http.post('/api/v1/auth/logout', ({ request }) => {
+        calls.push(`logout:${request.headers.get('X-XSRF-TOKEN')}`)
+        return new HttpResponse(null, { status: 204 })
+      }),
+    )
+
+    await apiSend('POST', '/api/v1/auth/logout', NoContent)
+
+    expect(calls).toEqual(['csrf', 'logout:novo'])
+  })
+
+  it('renova o cookie e repete uma vez quando o token CSRF expirou (419)', async () => {
+    document.cookie = 'XSRF-TOKEN=velho'
+    let attempts = 0
+    server.use(
+      http.get('/sanctum/csrf-cookie', () => {
+        document.cookie = 'XSRF-TOKEN=novo'
+        return new HttpResponse(null, { status: 204 })
+      }),
+      http.post('/api/v1/auth/logout', ({ request }) => {
+        attempts++
+        return request.headers.get('X-XSRF-TOKEN') === 'novo'
+          ? new HttpResponse(null, { status: 204 })
+          : HttpResponse.json({ message: 'CSRF token mismatch.' }, { status: 419 })
+      }),
+    )
+
+    await apiSend('POST', '/api/v1/auth/logout', NoContent)
+
+    expect(attempts).toBe(2)
+  })
+})
+
+describe('fieldErrors e errorMessage', () => {
+  it('extrai a primeira mensagem de cada campo de um 422', () => {
+    const error = new ApiError('x', 422, { message: 'inválido', errors: { email: ['E-mail inválido.', 'outro'] } })
+
+    expect(fieldErrors(error)).toEqual({ email: 'E-mail inválido.' })
+  })
+
+  it('não confia em corpos fora do formato esperado', () => {
+    expect(fieldErrors(new ApiError('x', 422, { errors: 'hacked' }))).toEqual({})
+    expect(fieldErrors(new Error('rede'))).toEqual({})
+  })
+
+  it('traduz 429 e esconde detalhes de erros 5xx', () => {
+    expect(errorMessage(new ApiError('x', 429, null))).toMatch(/muitas tentativas/i)
+    expect(errorMessage(new ApiError('x', 500, { message: 'SQLSTATE...' }))).toMatch(/algo deu errado/i)
+    expect(errorMessage(new ApiError('x', 422, { message: 'Regra violada.' }))).toBe('Regra violada.')
   })
 })

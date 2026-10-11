@@ -160,11 +160,23 @@ Http ──► Application ──► Domain ◄── Infrastructure
 | Transições de estado | Apenas por métodos de intenção (`$version->approveCommit($admin, $reason)`), que validam a transição e emitem o evento. `status` não é *fillable* | Mantém as invariantes dentro do agregado (padrão State via enum com mapa de transições) |
 | Portas e adaptadores | Só onde há I/O externo ou não determinístico: `GitSourceFetcher`, `QuarantineStore`, `ArtifactStore`, `ThumbnailProcessor`, `Clock` | Permite testar o domínio sem rede nem disco e trocar a infraestrutura depois |
 | Casos de uso | Actions invocáveis (`AuthorizeImport`, `ApproveCommit`, `ApproveFile`, `PublishVersion`, `SubmitScore`...) | SRP. Qualquer entrada (HTTP, CLI, job) passa pelo mesmo caminho |
-| Autorização | Policies do Laravel, chamadas **dentro da Action** (não só no controller), mais roles/permissions (spatie) | Uma nova rota não consegue "esquecer" a autorização (I12) |
+| Autorização | Gate **dentro da Action** (não só no controller): permissão do enum `Permission`, ou Policy quando depende do recurso. Rotas admin sempre no grupo `/api/v1/admin` | Uma nova rota não consegue "esquecer" a autorização (I12) |
 | Política de repositório | Lista de regras `RepositoryRule` (Specification) compostas em `RepositoryPolicy` | Open/Closed: uma nova regra é uma nova classe, testada isoladamente |
-| Auditoria | Eventos de domínio → listener **síncrono** que grava `audit_entries` na mesma transação | A auditoria não se perde se a fila cair (I11) |
+| Eventos de domínio | O agregado registra (`RecordsDomainEvents`); a Action persiste e publica (`DomainEventPublisher`) dentro da transação | O domínio não depende do dispatcher, e os listeners síncronos participam do mesmo commit |
+| Auditoria | Eventos que implementam `Audit\Domain\Auditable` → listener **síncrono** que grava `audit_entries` na mesma transação | A auditoria não se perde se a fila cair (I11), e os módulos não dependem do Audit além do contrato |
+| Erros de domínio | Exceções `BusinessRuleViolation` com mensagem em pt-BR → HTTP 422, mapeadas só em `bootstrap/app.php` | Um único ponto de tradução domínio → HTTP |
 | IDs | ULID nas entidades expostas; UUID v4 em `publicId` do artefato | Não enumeráveis e ordenáveis |
 | API | JSON REST, `/api/v1`, respostas com API Resources. OpenAPI gerada a partir do código (Scramble) | Contrato documentado sem manutenção manual |
+
+### API e autenticação
+
+- Rotas em `/api/v1`. Cada módulo declara as suas em `Http/routes.php` (públicas) e `Http/admin-routes.php`
+  (administrativas). O `routes/api.php` inclui as administrativas **só** dentro do grupo
+  `/api/v1/admin` (`auth:sanctum` + `verified` + `role:admin`).
+- Autenticação: Fortify headless em `/api/v1/auth` (`register`, `login`, `logout`, `forgot-password`, `reset-password`,
+  `email/verify/{id}/{hash}`, `email/verification-notification`), mais `GET /api/v1/me` ([ADR 0011](adr/0011-autenticacao-com-fortify.md)).
+- A SPA busca `/sanctum/csrf-cookie` antes da primeira requisição que altera estado e repete uma vez em caso de 419.
+- Os e-mails saem pela fila `default`, com links para as rotas da SPA (`/verificar-email?link=…`, `/redefinir-senha?token=…`).
 
 ## Fluxos principais
 

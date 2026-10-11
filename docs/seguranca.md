@@ -73,9 +73,12 @@ como cada uma é mitigada e onde a mitigação é verificada. Uma mitigação se
 
 | # | Ameaça | Mitigação | Verificação |
 |---|---|---|---|
-| A1 | CSRF | Sanctum SPA (cookie) + token CSRF + proteção de origem do Laravel 13 | Teste de feature |
-| A2 | Força bruta em login | Rate limit por IP + e-mail | Teste de feature |
-| A5 | Contas descartáveis inflando o ranking | Verificação de e-mail obrigatória antes de criar sessões de jogo. Reenvio de verificação com rate limit | Teste de feature |
+| A1 | CSRF | Sanctum SPA (cookie) + token CSRF + proteção de origem do Laravel 13. Cookies host-only (`bitman.sandrigo.com.br`), `Secure`; sessão `HttpOnly` | Teste do cliente HTTP (cookie e repetição no 419) + verificação em produção (POST sem token → 419) |
+| A2 | Força bruta em login | Rate limit de 5/min por e-mail + IP e 20/min por IP; 30/min por IP em todas as rotas de autenticação. A mesma mensagem para e-mail inexistente e senha errada | `AuthenticationTest` |
+| A5 | Contas descartáveis inflando o ranking | Verificação de e-mail obrigatória antes de criar sessões de jogo e para receber roles acima de `player`. Reenvio de verificação com rate limit (6/min) | `EmailVerificationTest`, `DeveloperRoleTest` |
+| A6 | Enumeração de contas pelo "esqueci a senha" | Resposta idêntica para e-mail cadastrado, desconhecido ou pedido repetido | `PasswordResetTest` |
+| A7 | Redirecionamento aberto após o login (`?next=`) e chamada arbitrária à API pelo link de verificação | `?next=` só aceita caminhos internos (`/…`, nunca `//…`). A SPA só chama links no formato exato da URL assinada de verificação | Testes do `LoginPage` e do `VerifyEmailPage` |
+| A8 | Verificar o e-mail de outra conta | O link é assinado, expira em 60 min e só vale para o usuário logado a que pertence | `EmailVerificationTest` |
 | A3 | Mass assignment | FormRequest → DTO explícito, sem `$request->all()` | Revisão + Larastan |
 | A4 | Thumbnail maliciosa (polyglot, SVG, bomba de descompressão) | Apenas PNG/JPEG/WebP verificados pelo conteúdo, limites de bytes e dimensões, re-codificação em WebP e nome aleatório | Testes com arquivos-fixture |
 | S1 | Replay de score | Sessão de uso único (I10) e `unique(game_session_id)` | Teste de concorrência |
@@ -92,6 +95,6 @@ registrados e podem ser ocultados do ranking pelo admin. Validação autoritativ
 ## Checklist de PR com impacto em segurança
 
 - [ ] A nova entrada externa passa por um value object ou FormRequest com validação estrita?
-- [ ] A ação administrativa passa pela Policy dentro da Action e gera `AuditEntry`?
+- [ ] A ação administrativa autoriza pelo Gate dentro da Action, gera `AuditEntry` e tem a rota no grupo `/api/v1/admin`?
 - [ ] Algum dado vindo do Git chega a um comando, caminho de arquivo ou HTML sem tratamento?
 - [ ] Os headers e atributos de isolamento dos jogos continuam cobertos por testes?

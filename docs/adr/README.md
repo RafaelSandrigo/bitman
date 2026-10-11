@@ -18,3 +18,4 @@ Para criar um, copie [template.md](template.md) para `NNNN-titulo-curto.md`.
 | [0008](0008-auditoria-append-only.md) | Auditoria append-only síncrona | Aceito |
 | [0009](0009-laravel-boost-restrito.md) | Laravel Boost com restrições (sem viés comercial, sem Tinker MCP) | Aceito |
 | [0010](0010-infraestrutura-homelab.md) | Infraestrutura no servidor compartilhado (Cloudflare + Traefik + deploy-hub) | Aceito |
+| [0011](0011-autenticacao-com-fortify.md) | Autenticação com Fortify headless (cadastro, login, verificação e senha) | Aceito |

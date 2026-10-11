@@ -46,6 +46,21 @@ diretamente os dados de outro contexto. Detalhes em [arquitetura.md](arquitetura
 
 ## Agregados
 
+### User (Identity)
+
+- Campos: `id` (ULID), `name`, `email` (único, em minúsculas), `email_verified_at` e a senha (hash).
+- Toda conta nasce com a role `player`, que é permanente.
+- `grantRole(role, actor)` / `revokeRole(role, actor)` são os únicos meios de mudar roles. Eles recusam role repetida,
+  remoção de `player`, remoção de role ausente e roles acima de `player` para quem não confirmou o e-mail.
+  Cada mudança registra `RoleGranted` / `RoleRevoked`, que são auditáveis.
+- Pelo painel só se promove ou rebaixa `developer`. `admin` só é concedido pelo console (`user:grant-role`).
+
+| Role | Permissões |
+|---|---|
+| `player` | — (joga e aparece nos rankings, com e-mail confirmado) |
+| `developer` | `games.submit` |
+| `admin` | todas (`games.submit`, `users.manage-roles`, `audit.view` e as das próximas fases) |
+
 ### Game (Catalog)
 
 - Campos: `id` (ULID), `slug` (único), `name`, `description`, `authorName`,
