@@ -12,7 +12,8 @@ existência de uma rota. O dono do jogo nunca pode aprovar nada.
 - `spatie/laravel-permission` com roles `player`, `developer` e `admin` e permissões granulares (`versions.authorize-import`, `versions.approve-commit`, `files.review`, `versions.publish`, `games.block`...).
   Roles e permissões são enums do domínio (`Identity\Domain\Role` e `Permission`); o seeder sincroniza o banco a cada deploy.
   Cada permissão nasce na fase que a usa. Na Fase 1: `games.submit`, `users.manage-roles` e `audit.view`; na Fase 2: `games.manage`; na Fase 3:
-  `versions.authorize-import` (Portão 0, nova importação e consulta das versões).
+  `versions.authorize-import` (Portão 0, nova importação e consulta das versões); na Fase 4: `versions.approve-commit`
+  (Portão 1) e `files.review` (Portão 2: conteúdo, decisão por arquivo e rejeição da versão).
 - Autorização **dentro das Actions**, pelo Gate: `authorize(Permission::X)` quando basta a permissão, e uma Policy
   quando a regra depende do recurso (ex.: dono do jogo). Assim qualquer entrada (HTTP, CLI, job) é autorizada.
 - Todas as rotas administrativas são declaradas dentro de um único grupo `/api/v1/admin`

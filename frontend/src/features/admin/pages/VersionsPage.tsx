@@ -7,7 +7,18 @@ import { Button } from '../../../shared/ui/Button'
 import { ImportDecision, NewImportButton } from '../ImportDecision'
 import { listVersions, versionStatusLabels, type Version, type VersionStatus } from '../versions'
 
-const queues: VersionStatus[] = ['import_requested', 'fetching', 'awaiting_commit_review', 'validation_failed', 'fetch_failed', 'import_rejected']
+/** Filas de trabalho primeiro (portões 0, 1 e 2), depois as versões que pararam. */
+const queues: VersionStatus[] = [
+  'import_requested',
+  'fetching',
+  'awaiting_commit_review',
+  'awaiting_file_review',
+  'validation_failed',
+  'fetch_failed',
+  'import_rejected',
+  'commit_rejected',
+  'rejected',
+]
 
 const dateFormat = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
 
@@ -48,7 +59,14 @@ function VersionCard({ version }: { version: Version }) {
       {version.status === 'import_requested' && <ImportDecision version={version} />}
       {version.status === 'fetching' && <p className="text-slate-300">Buscando o repositório na sandbox…</p>}
       {version.status === 'awaiting_commit_review' && (
-        <Alert tone="success">Sem violações. A revisão do commit (Portão 1) chega na próxima fase.</Alert>
+        <Link to={`/admin/versoes/${encodeURIComponent(version.id)}`} className="inline-block font-semibold text-emerald-400 hover:underline">
+          Revisar commit (Portão 1) →
+        </Link>
+      )}
+      {version.status === 'awaiting_file_review' && (
+        <Link to={`/admin/versoes/${encodeURIComponent(version.id)}`} className="inline-block font-semibold text-emerald-400 hover:underline">
+          Revisar arquivos (Portão 2) →
+        </Link>
       )}
       {version.status === 'validation_failed' && (
         <Alert tone="error">
@@ -62,13 +80,15 @@ function VersionCard({ version }: { version: Version }) {
           <NewImportButton gameId={version.game.id} />
         </>
       )}
-      {version.status === 'import_rejected' && <NewImportButton gameId={version.game.id} />}
+      {(version.status === 'import_rejected' || version.status === 'commit_rejected' || version.status === 'rejected') && (
+        <NewImportButton gameId={version.game.id} />
+      )}
     </li>
   )
 }
 
-/** Filas do Portão 0 e da busca, por ordem de chegada. */
-export function ImportsPage() {
+/** Filas dos portões e da busca, por ordem de chegada. */
+export function VersionsPage() {
   const [params, setParams] = useSearchParams()
   const requested = params.get('estado')
   const status: VersionStatus = isQueue(requested) ? requested : 'import_requested'
@@ -89,10 +109,10 @@ export function ImportsPage() {
 
   return (
     <section className="space-y-4">
-      <h1 className="text-2xl font-bold">Importações</h1>
+      <h1 className="text-2xl font-bold">Versões</h1>
       <p className="text-sm text-slate-400">
         Portão 0: nenhum repositório é acessado antes da sua autorização. A busca roda numa sandbox isolada, e o resultado
-        passa pela política de repositório.
+        passa pela política de repositório. Depois, o Portão 1 revisa o commit e o Portão 2, cada arquivo.
       </p>
 
       <div role="tablist" aria-label="Filas" className="flex flex-wrap gap-2">

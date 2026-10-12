@@ -11,7 +11,7 @@ function page(versions: Version[]) {
   return { data: versions, meta: { current_page: 1, last_page: 1, total: versions.length } }
 }
 
-describe('ImportsPage', () => {
+describe('VersionsPage', () => {
   it('mostra a fila do Portão 0 e autoriza a importação', async () => {
     let version = makeVersion()
     const statuses: (string | null)[] = []
@@ -29,7 +29,7 @@ describe('ImportsPage', () => {
         return HttpResponse.json({ data })
       }),
     )
-    const { user } = renderAt('/admin/importacoes')
+    const { user } = renderAt('/admin/versoes')
 
     const item = await screen.findByRole('listitem', { name: 'Snake — versão 1' })
     expect(within(item).getByText(/Nada é buscado antes disso/)).toBeInTheDocument()
@@ -55,7 +55,7 @@ describe('ImportsPage', () => {
         )
       }),
     )
-    const { user } = renderAt('/admin/importacoes')
+    const { user } = renderAt('/admin/versoes')
 
     await user.click(await screen.findByRole('button', { name: 'Rejeitar' }))
     await user.type(screen.getByRole('textbox', { name: 'Motivo da rejeição' }), 'ok')
@@ -79,7 +79,7 @@ describe('ImportsPage', () => {
         return HttpResponse.json({ data }, { status: 201 })
       }),
     )
-    const { user, router } = renderAt('/admin/importacoes')
+    const { user, router } = renderAt('/admin/versoes')
 
     await user.click(await screen.findByRole('tab', { name: 'Busca falhou' }))
     expect(router.state.location.search).toBe('?estado=fetch_failed')
@@ -91,13 +91,36 @@ describe('ImportsPage', () => {
     expect(created).toBe(true)
   })
 
-  it('o menu da administração leva às importações', async () => {
+  it('a fila do Portão 1 leva à revisão do commit', async () => {
+    const version = makeVersion({ status: 'awaiting_commit_review', commit_sha: 'a'.repeat(40), blocked: false })
+    server.use(
+      ...sessionHandlers(makeAdmin()).handlers,
+      http.get('/api/v1/admin/versions', ({ request }) =>
+        HttpResponse.json(page(new URL(request.url).searchParams.get('status') === 'awaiting_commit_review' ? [version] : [])),
+      ),
+    )
+    const { user } = renderAt('/admin/versoes')
+
+    await user.click(await screen.findByRole('tab', { name: 'Aguardando revisão do commit' }))
+
+    expect(await screen.findByRole('link', { name: 'Revisar commit (Portão 1) →' })).toHaveAttribute('href', `/admin/versoes/${version.id}`)
+  })
+
+  it('o endereço antigo das importações leva às versões', async () => {
+    server.use(...sessionHandlers(makeAdmin()).handlers, http.get('/api/v1/admin/versions', () => HttpResponse.json(page([]))))
+    const { router } = renderAt('/admin/importacoes')
+
+    expect(await screen.findByRole('heading', { name: 'Versões' })).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/admin/versoes')
+  })
+
+  it('o menu da administração leva às versões', async () => {
     server.use(...sessionHandlers(makeAdmin()).handlers, http.get('/api/v1/admin/submissions', () => HttpResponse.json({ data: [], meta: { current_page: 1, last_page: 1, total: 0 } })), http.get('/api/v1/admin/versions', () => HttpResponse.json(page([]))))
     const { user, router } = renderAt('/admin')
 
-    await user.click(await screen.findByRole('link', { name: 'Importações' }))
+    await user.click(await screen.findByRole('link', { name: 'Versões' }))
 
-    expect(router.state.location.pathname).toBe('/admin/importacoes')
-    expect(await screen.findByRole('heading', { name: 'Importações' })).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/admin/versoes')
+    expect(await screen.findByRole('heading', { name: 'Versões' })).toBeInTheDocument()
   })
 })

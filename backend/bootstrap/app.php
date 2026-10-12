@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Modules\Identity\Http\Middleware\EnsureEmailIsVerified;
+use App\Modules\Versioning\Domain\Exceptions\QuarantineTampered;
 use App\Shared\Domain\BusinessRuleViolation;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -37,4 +38,6 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Único ponto de mapeamento das regras de negócio para HTTP.
         $exceptions->render(fn (BusinessRuleViolation $e) => response()->json(['message' => $e->getMessage()], 422));
+        // P1: quarentena adulterada. Continua sendo reportada; o admin vê o motivo, nunca o conteúdo.
+        $exceptions->render(fn (QuarantineTampered $e) => response()->json(['message' => $e->getMessage()], 409));
     })->create();

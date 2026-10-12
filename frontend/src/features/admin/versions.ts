@@ -60,25 +60,46 @@ export const ReportSchema = z.object({
 })
 export type Report = z.infer<typeof ReportSchema>
 
+const Sha256 = z.string().regex(/^[0-9a-f]{64}$/)
+
+/** Uma decisão do Portão 2 (append-only), sempre sobre um hash (I5). */
+export const FileReviewSchema = z.object({
+  id: z.string(),
+  decision: z.enum(['approved', 'rejected']),
+  sha256: Sha256,
+  reason: z.string().nullable(),
+  reviewer: z.object({ id: z.string(), name: z.string() }),
+  decided_at: z.string(),
+})
+export type FileReview = z.infer<typeof FileReviewSchema>
+
 export const VersionFileSchema = z.object({
   id: z.string(),
   path: z.string(),
-  sha256: z.string().regex(/^[0-9a-f]{64}$/),
+  sha256: Sha256,
   size: z.number().int().nonnegative(),
   git_blob_sha: Sha,
   change_type: z.enum(['added', 'modified', 'unchanged']),
   review_status: z.enum(['pending', 'approved', 'rejected']),
+  reviews: z.array(FileReviewSchema),
+  /** ADR 0006: só informação. A aprovação nunca é herdada. */
+  previous_approval: FileReviewSchema.extend({ version_number: z.number().int().positive() }).nullable(),
 })
 export type VersionFile = z.infer<typeof VersionFileSchema>
 
+const DecisionSchema = z
+  .object({
+    decided_by: z.object({ id: z.string(), name: z.string() }).nullable(),
+    decided_at: z.string(),
+    rejection_reason: z.string().nullable(),
+  })
+  .nullable()
+export type Decision = z.infer<typeof DecisionSchema>
+
 export const VersionDetailSchema = VersionSchema.extend({
-  import_decision: z
-    .object({
-      decided_by: z.object({ id: z.string(), name: z.string() }).nullable(),
-      decided_at: z.string(),
-      rejection_reason: z.string().nullable(),
-    })
-    .nullable(),
+  import_decision: DecisionSchema,
+  commit_decision: DecisionSchema,
+  rejection: DecisionSchema,
   report: ReportSchema.nullable(),
   files: z.array(VersionFileSchema),
 })
@@ -110,4 +131,36 @@ export function rejectImport(id: string, reason: string) {
 
 export function requestNewImport(gameId: string) {
   return apiSend('POST', `/api/v1/admin/games/${encodeURIComponent(gameId)}/versions`, VersionEnvelope)
+}
+
+export function approveCommit(id: string) {
+  return apiSend('POST', `/api/v1/admin/versions/${encodeURIComponent(id)}/approve-commit`, VersionEnvelope)
+}
+
+export function rejectCommit(id: string, reason: string) {
+  return apiSend('POST', `/api/v1/admin/versions/${encodeURIComponent(id)}/reject-commit`, VersionEnvelope, { reason })
+}
+
+export function rejectVersion(id: string, reason: string) {
+  return apiSend('POST', `/api/v1/admin/versions/${encodeURIComponent(id)}/reject`, VersionEnvelope, { reason })
+}
+
+export const FileContentSchema = z.object({
+  id: z.string(),
+  path: z.string(),
+  sha256: Sha256,
+  size: z.number().int().nonnegative(),
+  content: z.string(),
+})
+export type FileContent = z.infer<typeof FileContentSchema>
+
+export async function getFileContent(versionId: string, fileId: string) {
+  const path = `/api/v1/admin/versions/${encodeURIComponent(versionId)}/files/${encodeURIComponent(fileId)}/content`
+  return (await apiGet(path, z.object({ data: FileContentSchema }))).data
+}
+
+/** A decisão leva o hash do conteúdo que o admin viu na tela (I5). */
+export function reviewFile(versionId: string, fileId: string, decision: { decision: 'approved' | 'rejected'; sha256: string; reason?: string }) {
+  const path = `/api/v1/admin/versions/${encodeURIComponent(versionId)}/files/${encodeURIComponent(fileId)}/review`
+  return apiSend('POST', path, VersionEnvelope, decision)
 }

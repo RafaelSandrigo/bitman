@@ -1,10 +1,10 @@
 import { createBrowserRouter, createMemoryRouter, Navigate, type RouteObject } from 'react-router'
 import { AdminLayout } from '../features/admin/AdminLayout'
 import { AuditPage } from '../features/admin/pages/AuditPage'
-import { ImportsPage } from '../features/admin/pages/ImportsPage'
 import { SubmissionsPage } from '../features/admin/pages/SubmissionsPage'
 import { UsersPage } from '../features/admin/pages/UsersPage'
 import { VersionPage } from '../features/admin/pages/VersionPage'
+import { VersionsPage } from '../features/admin/pages/VersionsPage'
 import { Permission } from '../features/auth/api'
 import { ForgotPasswordPage } from '../features/auth/pages/ForgotPasswordPage'
 import { LoginPage } from '../features/auth/pages/LoginPage'
@@ -56,7 +56,8 @@ const routes: RouteObject[] = [
             children: [
               { index: true, element: <Navigate to="submissoes" replace /> },
               { path: 'submissoes', element: <SubmissionsPage /> },
-              { path: 'importacoes', element: <ImportsPage /> },
+              { path: 'versoes', element: <VersionsPage /> },
+              { path: 'importacoes', element: <Navigate to="/admin/versoes" replace /> },
               { path: 'versoes/:id', element: <VersionPage /> },
               { path: 'usuarios', element: <UsersPage /> },
               { path: 'auditoria', element: <AuditPage /> },

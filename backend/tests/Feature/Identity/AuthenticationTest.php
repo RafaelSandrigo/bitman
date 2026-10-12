@@ -78,7 +78,7 @@ it('o banco espelha os enums de roles e permissões, inclusive removendo as que 
     $this->seed(RolesAndPermissionsSeeder::class);
 
     expect(Permission::pluck('name')->sort()->values()->all())
-        ->toBe(['audit.view', 'games.manage', 'games.submit', 'users.manage-roles', 'versions.authorize-import'])
+        ->toBe(['audit.view', 'files.review', 'games.manage', 'games.submit', 'users.manage-roles', 'versions.approve-commit', 'versions.authorize-import'])
         ->and(Role::pluck('name')->sort()->values()->all())
         ->toBe(['admin', 'developer', 'player']);
 });

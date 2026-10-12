@@ -126,8 +126,15 @@ A partir de `awaiting_commit_review`, `commit_sha` e o relatório são obrigató
   e `reviewStatus` (`pending` | `approved` | `rejected`).
 - Toda decisão vira um registro append-only `FileReview` com
   (`versionFileId`, `sha256` analisado, `decision`, `reviewerId`, `reason`, `decidedAt`).
-  Enquanto a versão está em `awaiting_file_review`, o admin pode mudar de ideia; o
-  status atual é o da última decisão.
+  Enquanto a versão está em `awaiting_file_review`, o admin pode mudar de ideia sobre uma
+  aprovação; o status atual é o da última decisão. Como todo arquivo da versão é obrigatório,
+  **rejeitar um arquivo rejeita a versão** (motivo: "Arquivo X rejeitado: …"), e aí não há
+  mais volta. O admin também pode rejeitar a versão inteira, com motivo.
+- A decisão leva o SHA-256 do conteúdo que o admin abriu: só há botão de aprovar depois de
+  abrir o arquivo, e o conteúdo é conferido contra o hash do fetch antes de ser mostrado.
+- Rejeição do commit ou da versão descarta a quarentena dela (o hash fica no banco).
+  Com todos os arquivos aprovados, a versão continua em `awaiting_file_review`, pronta para
+  a publicação (Fase 5).
 - **Não há herança de aprovação entre versões.** Um arquivo `unchanged` mostra
   "aprovado anteriormente por X em Y" como informação, mas precisa de nova aprovação
   explícita ([ADR 0006](adr/0006-aprovacao-vinculada-ao-hash.md)).

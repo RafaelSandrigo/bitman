@@ -93,16 +93,20 @@ Status: ⬜ não iniciada · 🟨 em andamento · ✅ concluída
 Redirect: `http.followRedirects=false` e o código `redirected` são testados, mas não há fixture de redirect real (exigiria
 um servidor HTTPS falso dentro da allowlist).
 
-## Fase 4 — Revisão (Portões 1 e 2) ⬜
+## Fase 4 — Revisão (Portões 1 e 2) ✅
 
-- Tela do Portão 1: repositório, ref, commit, arquivos encontrados (✓/✗), violações
-  e diff. Aprovar fica desabilitado quando há violação bloqueante (I3).
-- Tela do Portão 2: visualizador de cada arquivo como texto (J5), hash, tipo de
-  mudança e aprovação/rejeição com motivo, vinculada ao hash (I5).
-- Histórico de decisões por arquivo e por versão.
+- ✅ Portão 1 (`versions.approve-commit`): repositório, ref, commit, arquivos encontrados (✓) e ignorados (✗),
+  violações e tipo de mudança de cada arquivo (o diff em relação à versão publicada). Aprovar fica desabilitado
+  com violação bloqueante, e a Action também recusa (I3). Rejeitar exige motivo e descarta a quarentena.
+- ✅ Portão 2 (`files.review`): visualizador de cada arquivo como texto (J5), com os caracteres bidirecionais e
+  invisíveis marcados; hash, tamanho, tipo de mudança e "aprovado anteriormente por X" (ADR 0006, sem herança).
+  A decisão leva o hash do conteúdo exibido (I5); rejeitar arquivo ou versão exige motivo (I11).
+- ✅ `file_reviews` append-only (trigger no banco); histórico por arquivo e decisões de cada portão no detalhe da versão.
+- ✅ Admin › **Versões** (antes "Importações"): filas dos três portões e das versões que pararam. O dono vê o motivo
+  da rejeição em qualquer portão e pode reenviar.
 
-**Aceite:** a rejeição de um arquivo obrigatório rejeita a versão. A auditoria
-responde "quem aprovou qual hash, quando".
+**Aceite:** ✅ a rejeição de um arquivo obrigatório rejeita a versão (`ReviewGatesTest`). ✅ A auditoria
+responde "quem aprovou qual hash, quando": `versioning.file-approved` com ator, data, `path` e `sha256`.
 
 ## Fase 5 — Publicação e execução isolada ⬜
 

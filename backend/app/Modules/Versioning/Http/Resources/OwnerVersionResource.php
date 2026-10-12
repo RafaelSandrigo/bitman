@@ -9,8 +9,8 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * Versão vista pelo dono do jogo: o estado e, quando parou, o motivo (rejeição do Portão 0, falha da
- * busca ou violações da política). Não expõe quem decidiu nem a lista de arquivos ignorados.
+ * Versão vista pelo dono do jogo: o estado e, quando parou, o motivo (rejeição em algum portão,
+ * falha da busca ou violações da política). Não expõe quem decidiu nem a lista de arquivos ignorados.
  *
  * @mixin GameVersion
  */
@@ -32,7 +32,7 @@ final class OwnerVersionResource extends JsonResource
             'in_progress' => $this->status->isInProgress(),
             'requested_ref' => $this->requested_ref,
             'commit_sha' => $this->commit_sha,
-            'rejection_reason' => $this->import_rejection_reason,
+            'rejection_reason' => $this->import_rejection_reason ?? $this->commit_rejection_reason ?? $this->rejection_reason,
             'fetch_failure' => $failure === null ? null : ['code' => $failure->value, 'message' => $failure->message()],
             'violations' => array_values($violations),
             'created_at' => $this->created_at->toIso8601String(),

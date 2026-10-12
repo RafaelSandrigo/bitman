@@ -1,4 +1,4 @@
-import type { Version, VersionDetail } from '../features/admin/versions'
+import type { Version, VersionDetail, VersionFile } from '../features/admin/versions'
 import type { MyVersion } from '../features/submissions/api'
 import { ulid } from './session'
 
@@ -24,6 +24,8 @@ export function makeVersionDetail(overrides: Partial<VersionDetail> = {}): Versi
   return {
     ...makeVersion({ status: 'awaiting_commit_review', commit_sha: 'a'.repeat(40), blocked: false, fetched_at: '2026-10-12T12:01:00+00:00' }),
     import_decision: { decided_by: { id: ulid(), name: 'Rafael' }, decided_at: '2026-10-12T12:00:30+00:00', rejection_reason: null },
+    commit_decision: null,
+    rejection: null,
     report: { blocked: false, violations: [], ignored: [], ignored_total: 0 },
     files: [],
     ...overrides,
@@ -44,6 +46,21 @@ export function makeMyVersion(overrides: Partial<MyVersion> = {}): MyVersion {
     violations: [],
     created_at: '2026-10-12T12:00:00+00:00',
     updated_at: '2026-10-12T12:00:00+00:00',
+    ...overrides,
+  }
+}
+
+export function makeVersionFile(overrides: Partial<VersionFile> = {}): VersionFile {
+  return {
+    id: ulid(),
+    path: 'game.js',
+    sha256: 'b'.repeat(64),
+    size: 2048,
+    git_blob_sha: 'c'.repeat(40),
+    change_type: 'added',
+    review_status: 'pending',
+    reviews: [],
+    previous_approval: null,
     ...overrides,
   }
 }

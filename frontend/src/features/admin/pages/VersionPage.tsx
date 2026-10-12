@@ -2,21 +2,14 @@ import { useQuery } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router'
 import { errorMessage } from '../../../shared/api/http'
 import { Alert } from '../../../shared/ui/Alert'
+import { formatSize } from '../format'
 import { ImportDecision, NewImportButton } from '../ImportDecision'
-import { getVersion, versionStatusLabels, type Report, type VersionFile } from '../versions'
+import { RejectWithReason } from '../RejectWithReason'
+import { CommitDecision, FileCard } from '../Review'
+import { useRefreshVersions } from '../useRefreshVersions'
+import { getVersion, rejectVersion, versionStatusLabels, type Decision, type Report, type VersionDetail } from '../versions'
 
 const dateFormat = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
-
-const changeLabels: Record<VersionFile['change_type'], string> = {
-  added: 'Novo',
-  modified: 'Alterado',
-  unchanged: 'Sem mudança',
-}
-
-function formatSize(bytes: number | null): string {
-  if (bytes === null) return 'acima do limite'
-  return bytes < 1024 ? `${bytes} B` : `${(bytes / 1024).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} KiB`
-}
 
 /** Tudo que vem do repositório é exibido como texto (o React escapa): nunca HTML. */
 function ReportSection({ report }: { report: Report }) {
@@ -59,37 +52,49 @@ function ReportSection({ report }: { report: Report }) {
   )
 }
 
-function FilesSection({ files }: { files: VersionFile[] }) {
+/** Decisão de um portão, como linha do resumo. */
+function DecisionLine({ term, decision, approved }: { term: string; decision: Decision; approved: string }) {
+  if (!decision) return null
+  return (
+    <>
+      <dt>{term}</dt>
+      <dd>
+        {decision.rejection_reason ? 'Rejeitado' : approved} por {decision.decided_by?.name ?? '—'} em {dateFormat.format(new Date(decision.decided_at))}
+        {decision.rejection_reason && <span className="block text-slate-300">Motivo: {decision.rejection_reason}</span>}
+      </dd>
+    </>
+  )
+}
+
+/** Portão 2: arquivos, decisão por arquivo e rejeição da versão inteira. */
+function FilesSection({ version }: { version: VersionDetail }) {
+  const refresh = useRefreshVersions()
+  const reviewing = version.status === 'awaiting_file_review'
+  const canView = reviewing || version.status === 'awaiting_commit_review'
+  const approved = version.files.filter((file) => file.review_status === 'approved').length
+
   return (
     <section aria-label="Arquivos da versão" className="space-y-3">
-      <h2 className="text-lg font-semibold">Arquivos na quarentena</h2>
-      {files.length === 0 ? (
+      <h2 className="text-lg font-semibold">{reviewing ? 'Portão 2 — revisão dos arquivos' : 'Arquivos na quarentena'}</h2>
+      {reviewing && (
+        <p className="text-sm text-slate-400">
+          Abra cada arquivo e decida sobre o conteúdo exibido: a decisão vale só para esse hash. {approved} de {version.files.length} aprovados.
+        </p>
+      )}
+      {version.files.length === 0 ? (
         <p className="text-sm text-slate-400">Nenhum arquivo extraído.</p>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="text-slate-400">
-              <tr>
-                <th className="py-2 pr-4">Arquivo</th>
-                <th className="py-2 pr-4">Tamanho</th>
-                <th className="py-2 pr-4">Mudança</th>
-                <th className="py-2">SHA-256</th>
-              </tr>
-            </thead>
-            <tbody>
-              {files.map((file) => (
-                <tr key={file.id} className="border-t border-slate-800">
-                  <td className="py-2 pr-4">✓ {file.path}</td>
-                  <td className="py-2 pr-4">{formatSize(file.size)}</td>
-                  <td className="py-2 pr-4">{changeLabels[file.change_type]}</td>
-                  <td className="py-2">
-                    <code className="break-all text-xs">{file.sha256}</code>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <ul className="space-y-3">
+          {version.files.map((file) => (
+            <FileCard key={file.id} versionId={version.id} file={file} canView={canView} canReview={reviewing} />
+          ))}
+        </ul>
+      )}
+      {reviewing && approved === version.files.length && version.files.length > 0 && (
+        <Alert tone="success">Todos os arquivos aprovados. A versão está pronta para a publicação, que chega na próxima fase.</Alert>
+      )}
+      {reviewing && (
+        <RejectWithReason label="Rejeitar versão" reject={(reason) => rejectVersion(version.id, reason)} onDone={refresh} />
       )}
     </section>
   )
@@ -107,13 +112,12 @@ export function VersionPage() {
   if (version.isPending) return <p className="text-slate-400">Carregando…</p>
 
   const v = version.data.data
-  const decision = v.import_decision
 
   return (
     <article className="space-y-6">
       <header className="space-y-1">
-        <Link to="/admin/importacoes" className="text-sm text-emerald-400 hover:underline">
-          ← Importações
+        <Link to="/admin/versoes" className="text-sm text-emerald-400 hover:underline">
+          ← Versões
         </Link>
         <h1 className="text-2xl font-bold">
           {v.game.name} <span className="text-slate-400">· versão {v.number}</span>
@@ -132,16 +136,7 @@ export function VersionPage() {
         <dd>
           {v.requested_by.name} em {dateFormat.format(new Date(v.created_at))}
         </dd>
-        {decision && (
-          <>
-            <dt>Portão 0</dt>
-            <dd>
-              {decision.rejection_reason ? 'Rejeitado' : 'Autorizado'} por {decision.decided_by?.name ?? '—'} em{' '}
-              {dateFormat.format(new Date(decision.decided_at))}
-              {decision.rejection_reason && <span className="block text-slate-300">Motivo: {decision.rejection_reason}</span>}
-            </dd>
-          </>
-        )}
+        <DecisionLine term="Portão 0" decision={v.import_decision} approved="Autorizado" />
         {v.commit_sha && (
           <>
             <dt>Commit</dt>
@@ -156,17 +151,29 @@ export function VersionPage() {
             <dd>{dateFormat.format(new Date(v.fetched_at))}</dd>
           </>
         )}
+        <DecisionLine term="Portão 1" decision={v.commit_decision} approved="Commit aprovado" />
+        <DecisionLine term="Rejeição" decision={v.rejection} approved="Rejeitada" />
       </dl>
 
       {v.status === 'import_requested' && <ImportDecision version={v} />}
       {v.status === 'fetching' && <Alert tone="info">Buscando o repositório na sandbox… esta página atualiza sozinha.</Alert>}
       {v.fetch_failure && <Alert tone="error">{v.fetch_failure.message}</Alert>}
-      {(v.status === 'fetch_failed' || v.status === 'import_rejected' || v.status === 'validation_failed') && (
+      {(['fetch_failed', 'import_rejected', 'validation_failed', 'commit_rejected', 'rejected'] as const).some((status) => status === v.status) && (
         <NewImportButton gameId={v.game.id} />
       )}
 
       {v.report && <ReportSection report={v.report} />}
-      {v.commit_sha && <FilesSection files={v.files} />}
+      {v.status === 'awaiting_commit_review' && (
+        <section aria-label="Portão 1" className="space-y-3">
+          <h2 className="text-lg font-semibold">Portão 1 — revisão do commit</h2>
+          <p className="text-sm text-slate-400">
+            Confira o repositório, a ref, o commit, os arquivos encontrados (✓) e ignorados (✗) e o tipo de mudança de cada um. Você pode abrir
+            os arquivos abaixo. Aprovar libera a revisão arquivo por arquivo.
+          </p>
+          <CommitDecision version={v} />
+        </section>
+      )}
+      {v.commit_sha && <FilesSection version={v} />}
 
       <Link to={`/admin/auditoria?subject_type=game_version&subject_id=${encodeURIComponent(v.id)}`} className="text-sm text-emerald-400 hover:underline">
         Histórico da versão

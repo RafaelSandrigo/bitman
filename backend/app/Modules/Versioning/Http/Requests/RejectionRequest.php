@@ -9,7 +9,8 @@ use App\Modules\Versioning\Domain\Exceptions\InvalidDecisionReason;
 use Closure;
 use Illuminate\Foundation\Http\FormRequest;
 
-final class RejectImportRequest extends FormRequest
+/** Rejeição em qualquer portão: o motivo é obrigatório (I11). */
+final class RejectionRequest extends FormRequest
 {
     /** @return array<string, list<mixed>> */
     public function rules(): array

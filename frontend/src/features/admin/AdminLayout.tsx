@@ -10,8 +10,8 @@ export function AdminLayout() {
         <NavLink to="/admin/submissoes" className={linkClass}>
           Submissões
         </NavLink>
-        <NavLink to="/admin/importacoes" className={linkClass}>
-          Importações
+        <NavLink to="/admin/versoes" className={linkClass}>
+          Versões
         </NavLink>
         <NavLink to="/admin/usuarios" className={linkClass}>
           Usuários

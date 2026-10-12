@@ -67,9 +67,19 @@ final class GameVersionFactory extends Factory
         ]);
     }
 
+    /** Commit aprovado no Portão 1. Os arquivos o teste cria (VersionFile::record). */
+    public function awaitingFileReview(): static
+    {
+        return $this->awaitingCommitReview()->state(fn (array $attributes) => [
+            'status' => VersionStatus::AwaitingFileReview,
+            'commit_decided_by_id' => User::factory()->admin(),
+            'commit_decided_at' => now(),
+        ]);
+    }
+
     public function published(): static
     {
-        return $this->awaitingCommitReview()->state(fn (array $attributes) => ['status' => VersionStatus::Published]);
+        return $this->awaitingFileReview()->state(fn (array $attributes) => ['status' => VersionStatus::Published]);
     }
 
     public function fetchFailed(): static

@@ -16,6 +16,11 @@ const actionLabels: Record<string, string> = {
   'versioning.import-rejected': 'Importação rejeitada (Portão 0)',
   'versioning.repository-fetched': 'Repositório buscado',
   'versioning.fetch-failed': 'Busca do repositório falhou',
+  'versioning.commit-approved': 'Commit aprovado (Portão 1)',
+  'versioning.commit-rejected': 'Commit rejeitado (Portão 1)',
+  'versioning.file-approved': 'Arquivo aprovado (Portão 2)',
+  'versioning.file-rejected': 'Arquivo rejeitado (Portão 2)',
+  'versioning.version-rejected': 'Versão rejeitada',
 }
 
 const dateFormat = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'medium' })
