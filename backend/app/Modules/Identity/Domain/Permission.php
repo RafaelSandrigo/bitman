@@ -19,6 +19,10 @@ enum Permission: string
     case ApproveCommits = 'versions.approve-commit';
     /** Portão 2: ver o conteúdo, aprovar ou rejeitar cada arquivo e rejeitar a versão. */
     case ReviewFiles = 'files.review';
+    /** Publicar a versão aprovada e retirar a publicada. */
+    case PublishVersions = 'versions.publish';
+    /** Bloquear e desbloquear um jogo publicado (J6). */
+    case BlockGames = 'games.block';
     case ManageRoles = 'users.manage-roles';
     case ViewAudit = 'audit.view';
 }

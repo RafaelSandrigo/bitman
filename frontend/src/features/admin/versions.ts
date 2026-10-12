@@ -46,6 +46,8 @@ export const VersionSchema = z.object({
   blocked: z.boolean().nullable(),
   fetch_failure: z.object({ code: z.string(), message: z.string() }).nullable(),
   fetched_at: z.string().nullable(),
+  public_id: z.string().uuid().nullable(),
+  published_at: z.string().nullable(),
   created_at: z.string(),
   game: z.object({ id: z.string(), name: z.string(), slug: z.string() }),
   requested_by: z.object({ id: z.string(), name: z.string() }),
@@ -102,6 +104,10 @@ export const VersionDetailSchema = VersionSchema.extend({
   import_decision: DecisionSchema,
   commit_decision: DecisionSchema,
   rejection: DecisionSchema,
+  publication: DecisionSchema,
+  withdrawal: DecisionSchema,
+  /** Só passa para link depois de `isPlayUrl`. */
+  play_url: z.string().nullable(),
   report: ReportSchema.nullable(),
   files: z.array(VersionFileSchema),
 })
@@ -114,6 +120,12 @@ const VersionPageSchema = z.object({
 
 export function listVersions(status: VersionStatus, page: number) {
   const query = new URLSearchParams({ status, page: String(page) })
+  return apiGet(`/api/v1/admin/versions?${query}`, VersionPageSchema)
+}
+
+/** Histórico de versões de um jogo, da mais recente para a mais antiga. */
+export function listGameVersions(gameId: string, page: number) {
+  const query = new URLSearchParams({ game_id: gameId, page: String(page) })
   return apiGet(`/api/v1/admin/versions?${query}`, VersionPageSchema)
 }
 
@@ -180,4 +192,13 @@ export async function getVersionSummary() {
 /** O admin viu estas versões no estado exibido: deixam de ser "novas". */
 export function markVersionsSeen(versions: Pick<Version, 'id' | 'status'>[]) {
   return apiSend('POST', '/api/v1/admin/versions/seen', NoContent, { versions: versions.map(({ id, status }) => ({ id, status })) })
+}
+
+/** Publicação (I6–I8): o servidor recalcula os hashes antes de gravar qualquer coisa. */
+export function publishVersion(id: string) {
+  return apiSend('POST', `/api/v1/admin/versions/${encodeURIComponent(id)}/publish`, VersionEnvelope)
+}
+
+export function withdrawVersion(id: string, reason: string) {
+  return apiSend('POST', `/api/v1/admin/versions/${encodeURIComponent(id)}/withdraw`, VersionEnvelope, { reason })
 }

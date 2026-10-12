@@ -4,10 +4,14 @@ declare(strict_types=1);
 
 namespace App\Modules\Catalog\Domain;
 
+use App\Modules\Catalog\Domain\Events\GameBlocked;
 use App\Modules\Catalog\Domain\Events\GameSlugChanged;
 use App\Modules\Catalog\Domain\Events\GameSubmitted;
+use App\Modules\Catalog\Domain\Events\GameUnblocked;
+use App\Modules\Catalog\Domain\Exceptions\InvalidGameTransition;
 use App\Modules\Catalog\Domain\Exceptions\SlugIsImmutable;
 use App\Modules\Identity\Domain\User;
+use App\Modules\Versioning\Domain\DecisionReason;
 use App\Shared\Domain\EmitsDomainEvents;
 use App\Shared\Domain\Git\GitRef;
 use App\Shared\Domain\Git\RepositoryUrl;
@@ -34,6 +38,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $repository_url
  * @property string $default_ref
  * @property GameStatus $status
+ * @property string|null $published_version_id a versão servida agora (I8, I9)
+ * @property CarbonImmutable|null $first_published_at
+ * @property string|null $blocked_by_id
+ * @property CarbonImmutable|null $blocked_at
+ * @property string|null $block_reason
  * @property CarbonImmutable $created_at
  * @property CarbonImmutable $updated_at
  * @property-read User $owner
@@ -91,6 +100,68 @@ final class Game extends Model implements EmitsDomainEvents
         $this->recordEvent(new GameSlugChanged($this->id, $current, $slug, $actor->id));
     }
 
+    /**
+     * Uma versão foi publicada (evento do Versioning, na mesma transação). A primeira publicação
+     * fixa a URL pública: o slug passa a ser imutável.
+     */
+    public function recordPublication(string $versionId): void
+    {
+        if ($this->status === GameStatus::Blocked) {
+            throw InvalidGameTransition::cannot('receber uma publicação enquanto está bloqueado');
+        }
+
+        $this->published_version_id = $versionId;
+        $this->first_published_at ??= CarbonImmutable::now();
+        $this->status = GameStatus::Published;
+        $this->save();
+    }
+
+    /** A versão publicada foi retirada: o jogo fica sem versão jogável até outra ser publicada (I9). */
+    public function clearPublication(string $versionId): void
+    {
+        if ($this->published_version_id === $versionId) {
+            $this->published_version_id = null;
+            $this->save();
+        }
+    }
+
+    /** J6: tira o jogo do ar, com motivo (I11). */
+    public function block(User $actor, DecisionReason $reason): void
+    {
+        if ($this->status !== GameStatus::Published) {
+            throw InvalidGameTransition::cannot('ser bloqueado');
+        }
+
+        $this->status = GameStatus::Blocked;
+        $this->blocked_by_id = $actor->id;
+        $this->blocked_at = CarbonImmutable::now();
+        $this->block_reason = $reason->value;
+        $this->save();
+
+        $this->recordEvent(new GameBlocked($this->id, $this->published_version_id, $actor->id, $reason->value));
+    }
+
+    public function unblock(User $actor): void
+    {
+        if ($this->status !== GameStatus::Blocked) {
+            throw InvalidGameTransition::cannot('ser desbloqueado');
+        }
+
+        $this->status = GameStatus::Published;
+        $this->blocked_by_id = null;
+        $this->blocked_at = null;
+        $this->block_reason = null;
+        $this->save();
+
+        $this->recordEvent(new GameUnblocked($this->id, $this->published_version_id, $actor->id));
+    }
+
+    /** I9: aparece na listagem e pode ser jogado. */
+    public function isPlayable(): bool
+    {
+        return $this->status === GameStatus::Published && $this->published_version_id !== null;
+    }
+
     /** @return BelongsTo<User, $this> */
     public function owner(): BelongsTo
     {
@@ -101,6 +172,8 @@ final class Game extends Model implements EmitsDomainEvents
     {
         return [
             'status' => GameStatus::class,
+            'first_published_at' => 'immutable_datetime',
+            'blocked_at' => 'immutable_datetime',
             'created_at' => 'immutable_datetime',
             'updated_at' => 'immutable_datetime',
         ];

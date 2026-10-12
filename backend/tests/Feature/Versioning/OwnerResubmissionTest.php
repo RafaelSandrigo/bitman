@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use App\Modules\Audit\Domain\AuditEntry;
 use App\Modules\Catalog\Domain\Game;
-use App\Modules\Catalog\Domain\GameStatus;
 use App\Modules\Identity\Domain\User;
 use App\Modules\Versioning\Application\Actions\RejectImport;
 use App\Modules\Versioning\Domain\DecisionReason;
@@ -113,7 +112,7 @@ describe('reenvio pelo dono', function (): void {
 
     it('recusa jogo bloqueado', function (): void {
         $owner = User::factory()->developer()->create();
-        $game = Game::factory()->for($owner, 'owner')->create(['status' => GameStatus::Blocked]);
+        $game = Game::factory()->for($owner, 'owner')->blocked()->create();
         GameVersion::factory()->for($game)->validationFailed()->create();
 
         $this->actingAs($owner)->postJson("/api/v1/me/games/{$game->id}/versions")

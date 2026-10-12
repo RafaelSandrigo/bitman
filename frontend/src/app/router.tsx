@@ -1,6 +1,8 @@
 import { createBrowserRouter, createMemoryRouter, Navigate, type RouteObject } from 'react-router'
 import { AdminLayout } from '../features/admin/AdminLayout'
+import { AdminGamePage } from '../features/admin/pages/AdminGamePage'
 import { AuditPage } from '../features/admin/pages/AuditPage'
+import { GamesPage } from '../features/admin/pages/GamesPage'
 import { SubmissionsPage } from '../features/admin/pages/SubmissionsPage'
 import { UsersPage } from '../features/admin/pages/UsersPage'
 import { VersionPage } from '../features/admin/pages/VersionPage'
@@ -11,6 +13,7 @@ import { LoginPage } from '../features/auth/pages/LoginPage'
 import { RegisterPage } from '../features/auth/pages/RegisterPage'
 import { ResetPasswordPage } from '../features/auth/pages/ResetPasswordPage'
 import { VerifyEmailPage } from '../features/auth/pages/VerifyEmailPage'
+import { GamePage } from '../features/catalog/pages/GamePage'
 import { HomePage } from '../features/catalog/pages/HomePage'
 import { MyGamesPage } from '../features/submissions/pages/MyGamesPage'
 import { SubmitGamePage } from '../features/submissions/pages/SubmitGamePage'
@@ -23,6 +26,7 @@ const routes: RouteObject[] = [
     element: <PublicLayout />,
     children: [
       { index: true, element: <HomePage /> },
+      { path: 'games/:slug', element: <GamePage /> },
       {
         element: <GuestOnly />,
         children: [
@@ -59,6 +63,8 @@ const routes: RouteObject[] = [
               { path: 'versoes', element: <VersionsPage /> },
               { path: 'importacoes', element: <Navigate to="/admin/versoes" replace /> },
               { path: 'versoes/:id', element: <VersionPage /> },
+              { path: 'jogos', element: <GamesPage /> },
+              { path: 'jogos/:id', element: <AdminGamePage /> },
               { path: 'usuarios', element: <UsersPage /> },
               { path: 'auditoria', element: <AuditPage /> },
             ],

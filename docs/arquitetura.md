@@ -216,11 +216,18 @@ sequenceDiagram
 
 ### Publicação
 
-`PublishVersion` (em uma transação): verifica I6 lendo cada blob da quarentena e
-recalculando o SHA-256 → grava em `artefatos/archive/{gameId}/versions/{n}/` (write-once)
-→ copia para `artefatos/served/{publicId}/` → marca a versão anterior como `superseded`
-e remove o diretório servido dela → emite `VersionPublished`. Bloquear um jogo ou
-retirar uma versão remove o diretório `served` correspondente. O `archive` é permanente.
+`PublishVersion` (em uma transação, com a versão e o jogo travados): verifica I6 lendo cada blob da
+quarentena e recalculando o SHA-256 → grava em `artifacts/archive/{gameId}/v{n}/` (write-once: `mkdir` e
+`fopen 'x'`, I7) → monta `artifacts/served/{publicId}/` num diretório de staging e o publica com um
+`rename` atômico (diretórios `0755`, arquivos `0644`, legíveis pelo nginx de jogos) → a versão anterior vai
+para `superseded` e sai do ar → a nova vira `published` → `VersionPublished` (o Catalog aponta o jogo para ela).
+Se algo falha antes do commit, o archive e o diretório servido desta tentativa são desfeitos. Depois do
+commit, a quarentena da versão é descartada (o conteúdo está no archive).
+
+Tirar do ar (retirada, bloqueio, versão substituída) acontece **dentro** da transação: numa falha, o jogo
+fica fora do ar, nunca "retirado no banco, mas servido" (J6). Voltar ao ar (desbloqueio) acontece **depois**
+do commit, a partir do archive e conferindo os hashes de novo; uma falha aí deixa o jogo fora do ar e é
+reportada (o detalhe do jogo no admin mostra se a versão está sendo servida). O `archive` é permanente.
 
 ### Partida e score
 

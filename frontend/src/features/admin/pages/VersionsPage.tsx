@@ -20,6 +20,8 @@ const queues: VersionStatus[] = [
   'import_rejected',
   'commit_rejected',
   'rejected',
+  'published',
+  'withdrawn',
 ]
 
 const dateFormat = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
@@ -85,7 +87,7 @@ function VersionCard({ version }: { version: Version }) {
           <NewImportButton gameId={version.game.id} />
         </>
       )}
-      {(version.status === 'import_rejected' || version.status === 'commit_rejected' || version.status === 'rejected') && (
+      {(version.status === 'import_rejected' || version.status === 'commit_rejected' || version.status === 'rejected' || version.status === 'withdrawn') && (
         <NewImportButton gameId={version.game.id} />
       )}
     </li>

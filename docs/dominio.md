@@ -67,7 +67,15 @@ diretamente os dados de outro contexto. Detalhes em [arquitetura.md](arquitetura
   `thumbnailPath`, `ownerId`, `repositoryUrl`, `defaultRef`, `status`,
   `publishedVersionId` e as datas.
 - Status: `submitted` → `published` ⇄ `blocked`. Também existe `rejected`, quando a
-  primeira versão é rejeitada; o dono pode solicitar uma nova importação.
+  primeira versão é rejeitada; o dono pode solicitar uma nova importação (ainda não usado: [melhorias M8](melhorias.md)).
+- `publishedVersionId` aponta a versão no ar. O Catalog reage aos eventos do Versioning na mesma
+  transação: `VersionPublished` → `recordPublication()` (jogo `published`, `firstPublishedAt` na primeira vez,
+  slug imutável dali em diante) e `VersionWithdrawn` → `clearPublication()` (jogo fica sem versão jogável).
+- `block()` (só de `published`, motivo obrigatório, `catalog.game-blocked`) e `unblock()` (`catalog.game-unblocked`,
+  permissão `games.block`). O bloqueio tira a versão do ar dentro da transação; o desbloqueio volta a servi-la
+  a partir do `archive` **depois** do commit, conferindo de novo cada hash. Jogo bloqueado não recebe publicação.
+- **Jogável (I9):** `published` **e** `publishedVersionId` não nulo. Só esses aparecem em `GET /api/v1/games`
+  e `GET /api/v1/games/{slug}`; qualquer outro estado responde 404.
 - O slug é gerado a partir do nome (`Pac-Man Clássico` → `pac-man-classico`, com sufixo `-2`, `-3`… se já
   existir) e pode ser editado pelo admin **até a primeira publicação** (`changeSlug`, auditado como
   `catalog.slug-changed`). Depois disso é imutável (URIs públicas não quebram). Formato: 2 a 60 caracteres,
@@ -118,6 +126,11 @@ mensagem da falha da busca —, nunca quem decidiu nem a lista de arquivos ignor
 **no máximo uma versão em andamento** (`import_requested`, `fetching`,
 `awaiting_commit_review`, `awaiting_file_review`), garantido por índice parcial no banco.
 A partir de `awaiting_commit_review`, `commit_sha` e o relatório são obrigatórios (`CHECK`, I13).
+
+**Publicação** (`versions.publish`): `assertPublishable()` (em `awaiting_file_review`, todos os arquivos
+aprovados) → `publish()` grava o `publicId` (UUID novo, o único nome do diretório servido) e registra
+`versioning.version-published` com o hash de cada arquivo. A anterior vai para `superseded` (`supersede()`)
+**antes**, porque o índice parcial só admite uma `published` por jogo (I8). `withdraw()` exige motivo.
 
 **"Novo" nas filas do admin** (`status_seen_at`): toda transição passa por `moveTo()`. A feita por um
 admin já nasce vista; a do sistema ou do dono (submissão, reenvio, fim da busca) fica nova até algum

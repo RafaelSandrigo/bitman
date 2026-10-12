@@ -16,12 +16,16 @@ use App\Modules\Versioning\Domain\Events\ImportRejected;
 use App\Modules\Versioning\Domain\Events\ImportRequested;
 use App\Modules\Versioning\Domain\Events\RepositoryFetched;
 use App\Modules\Versioning\Domain\Events\RepositoryFetchFailed;
+use App\Modules\Versioning\Domain\Events\VersionPublished;
 use App\Modules\Versioning\Domain\Events\VersionRejected;
+use App\Modules\Versioning\Domain\Events\VersionSuperseded;
+use App\Modules\Versioning\Domain\Events\VersionWithdrawn;
 use App\Modules\Versioning\Domain\Exceptions\CommitHasBlockingViolations;
 use App\Modules\Versioning\Domain\Exceptions\FileNotInVersion;
 use App\Modules\Versioning\Domain\Exceptions\InvalidDecisionReason;
 use App\Modules\Versioning\Domain\Exceptions\InvalidVersionTransition;
 use App\Modules\Versioning\Domain\Exceptions\StaleFileReview;
+use App\Modules\Versioning\Domain\Exceptions\VersionNotReadyToPublish;
 use App\Shared\Domain\EmitsDomainEvents;
 use App\Shared\Domain\Git\CommitSha;
 use App\Shared\Domain\Git\GitRef;
@@ -36,6 +40,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use InvalidArgumentException;
 use LogicException;
 
 /**
@@ -63,6 +68,12 @@ use LogicException;
  * @property string|null $rejected_by_id
  * @property CarbonImmutable|null $rejected_at
  * @property string|null $rejection_reason
+ * @property string|null $public_id UUID do diretório servido (a partir da publicação)
+ * @property string|null $published_by_id
+ * @property CarbonImmutable|null $published_at
+ * @property string|null $withdrawn_by_id
+ * @property CarbonImmutable|null $withdrawn_at
+ * @property string|null $withdrawal_reason
  * @property CarbonImmutable|null $status_seen_at quando um admin viu a versão no estado atual (null = "nova")
  * @property CarbonImmutable $created_at
  * @property CarbonImmutable $updated_at
@@ -71,6 +82,8 @@ use LogicException;
  * @property-read User|null $importDecidedBy
  * @property-read User|null $commitDecidedBy
  * @property-read User|null $rejectedBy
+ * @property-read User|null $publishedBy
+ * @property-read User|null $withdrawnBy
  * @property-read Collection<int, VersionFile> $files
  */
 #[UseFactory(GameVersionFactory::class)]
@@ -236,6 +249,61 @@ final class GameVersion extends Model implements EmitsDomainEvents
             && $this->files->every(fn (VersionFile $file): bool => $file->review_status === FileReviewStatus::Approved);
     }
 
+    /**
+     * Publicação (I6): todos os arquivos aprovados. A Action já conferiu o hash do conteúdo e gravou
+     * os artefatos; aqui fica a regra e o registro. A anterior sai do ar com `supersede()` (I8).
+     */
+    public function publish(User $actor, string $publicId): void
+    {
+        $this->assertPublishable();
+        if (preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/D', $publicId) !== 1) {
+            throw new InvalidArgumentException('publicId precisa ser um UUID em minúsculas.');
+        }
+
+        $this->moveTo(VersionStatus::Published, $actor);
+        $this->public_id = $publicId;
+        $this->published_by_id = $actor->id;
+        $this->published_at = CarbonImmutable::now();
+        $this->save();
+
+        $hashes = $this->files->mapWithKeys(fn (VersionFile $file): array => [$file->path => $file->sha256])->all();
+        $this->recordEvent(new VersionPublished($this->id, $this->game_id, $this->number, $publicId, (string) $this->commit_sha, $hashes, $actor->id));
+    }
+
+    /** I6: em revisão de arquivos, com todos aprovados. Conferido antes de gravar qualquer artefato. */
+    public function assertPublishable(): void
+    {
+        $this->ensureStatus(VersionStatus::AwaitingFileReview, 'ser publicada');
+        if (! $this->allFilesApproved()) {
+            throw new VersionNotReadyToPublish;
+        }
+    }
+
+    /** I8: outra versão do jogo foi publicada; esta deixa de ser a atual. */
+    public function supersede(User $actor, self $by): void
+    {
+        $this->ensureStatus(VersionStatus::Published, 'ser substituída');
+
+        $this->moveTo(VersionStatus::Superseded, $actor);
+        $this->save();
+
+        $this->recordEvent(new VersionSuperseded($this->id, $this->game_id, $this->number, (string) $this->public_id, $by->id, $actor->id));
+    }
+
+    /** J6: o admin retira a versão publicada, com motivo (I11). */
+    public function withdraw(User $actor, DecisionReason $reason): void
+    {
+        $this->ensureStatus(VersionStatus::Published, 'ser retirada');
+
+        $this->moveTo(VersionStatus::Withdrawn, $actor);
+        $this->withdrawn_by_id = $actor->id;
+        $this->withdrawn_at = CarbonImmutable::now();
+        $this->withdrawal_reason = $reason->value;
+        $this->save();
+
+        $this->recordEvent(new VersionWithdrawn($this->id, $this->game_id, $this->number, (string) $this->public_id, $actor->id, $reason->value));
+    }
+
     public function fetchFailure(): ?FetchFailure
     {
         return $this->fetch_failure === null ? null : FetchFailure::tryFrom($this->fetch_failure) ?? FetchFailure::FetchError;
@@ -269,6 +337,18 @@ final class GameVersion extends Model implements EmitsDomainEvents
     public function rejectedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'rejected_by_id');
+    }
+
+    /** @return BelongsTo<User, $this> */
+    public function publishedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'published_by_id');
+    }
+
+    /** @return BelongsTo<User, $this> */
+    public function withdrawnBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'withdrawn_by_id');
     }
 
     /** @return HasMany<VersionFile, $this> */
@@ -336,6 +416,8 @@ final class GameVersion extends Model implements EmitsDomainEvents
             'commit_decided_at' => 'immutable_datetime',
             'rejected_at' => 'immutable_datetime',
             'status_seen_at' => 'immutable_datetime',
+            'published_at' => 'immutable_datetime',
+            'withdrawn_at' => 'immutable_datetime',
             'created_at' => 'immutable_datetime',
             'updated_at' => 'immutable_datetime',
         ];

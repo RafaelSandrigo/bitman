@@ -85,6 +85,12 @@ function GameCard({ game, version }: { game: Game; version: MyVersion | undefine
           Enviado em {dateFormat.format(new Date(game.created_at))}
           {version && ` · versão ${version.number}`}
         </p>
+        {game.status === 'blocked' && game.block_reason && <Alert tone="error">Jogo bloqueado. Motivo: {game.block_reason}</Alert>}
+        {game.status === 'published' && game.published_version_id && (
+          <Link to={`/games/${game.slug}`} className="inline-block text-sm font-semibold text-emerald-400 hover:underline">
+            Jogar →
+          </Link>
+        )}
         {version && <StopReason version={version} />}
         {canResubmit && <ResubmitButton game={game} stopped={stopped} />}
       </div>

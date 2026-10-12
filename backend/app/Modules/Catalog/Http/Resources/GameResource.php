@@ -28,6 +28,10 @@ class GameResource extends JsonResource
             'repository_url' => $this->repository_url,
             'default_ref' => $this->default_ref,
             'status' => $this->status->value,
+            'published_version_id' => $this->published_version_id,
+            'first_published_at' => $this->first_published_at?->toIso8601String(),
+            // O dono também vê o motivo do bloqueio (nunca quem bloqueou).
+            'block_reason' => $this->block_reason,
             'created_at' => $this->created_at->toIso8601String(),
             'owner' => $this->whenLoaded('owner', fn (): array => [
                 'id' => $this->owner->id,

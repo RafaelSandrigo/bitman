@@ -11,7 +11,7 @@ use App\Modules\Identity\Domain\User;
 use Illuminate\Contracts\Auth\Access\Gate;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
-/** Fila de submissões do admin: jogos ainda não publicados, por ordem de chegada. */
+/** Jogos para o admin: a fila de submissões (ainda não publicados) ou os de outro estado, por ordem de chegada. */
 final readonly class ListSubmissions
 {
     private const PER_PAGE = 25;
@@ -19,13 +19,13 @@ final readonly class ListSubmissions
     public function __construct(private Gate $gate) {}
 
     /** @return LengthAwarePaginator<int, Game> */
-    public function __invoke(User $actor): LengthAwarePaginator
+    public function __invoke(User $actor, GameStatus $status = GameStatus::Submitted): LengthAwarePaginator
     {
         $this->gate->forUser($actor)->authorize(Permission::ManageGames->value);
 
         return Game::query()
             ->with('owner')
-            ->where('status', GameStatus::Submitted)
+            ->where('status', $status)
             ->oldest()
             ->paginate(self::PER_PAGE);
     }

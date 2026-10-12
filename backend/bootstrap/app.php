@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use App\Modules\Identity\Http\Middleware\EnsureEmailIsVerified;
+use App\Modules\Versioning\Domain\Exceptions\ArtifactAlreadyExists;
+use App\Modules\Versioning\Domain\Exceptions\PublishedContentMismatch;
 use App\Modules\Versioning\Domain\Exceptions\QuarantineTampered;
 use App\Shared\Domain\BusinessRuleViolation;
 use Illuminate\Foundation\Application;
@@ -40,4 +42,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->render(fn (BusinessRuleViolation $e) => response()->json(['message' => $e->getMessage()], 422));
         // P1: quarentena adulterada. Continua sendo reportada; o admin vê o motivo, nunca o conteúdo.
         $exceptions->render(fn (QuarantineTampered $e) => response()->json(['message' => $e->getMessage()], 409));
+        // I6, I7: integridade da publicação. Nada foi publicado; o erro continua sendo reportado.
+        $exceptions->render(fn (PublishedContentMismatch $e) => response()->json(['message' => $e->getMessage()], 409));
+        $exceptions->render(fn (ArtifactAlreadyExists $e) => response()->json(['message' => 'Já existe um artefato para esta versão; nada foi sobrescrito.'], 409));
     })->create();

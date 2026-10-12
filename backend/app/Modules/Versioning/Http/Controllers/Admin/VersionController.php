@@ -23,7 +23,7 @@ final class VersionController
 {
     public function index(ListVersionsRequest $request, #[CurrentUser] User $actor, ListVersions $listVersions): AnonymousResourceCollection
     {
-        return VersionResource::collection($listVersions($actor, $request->status()));
+        return VersionResource::collection($listVersions($actor, $request->status(), $request->gameId()));
     }
 
     /** Contadores das filas: total e "novos" por estado. */

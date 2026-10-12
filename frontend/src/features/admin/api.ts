@@ -61,8 +61,8 @@ const SubmissionPageSchema = z.object({
   meta: z.object({ current_page: z.number(), last_page: z.number(), total: z.number() }),
 })
 
-export function listSubmissions(page: number) {
-  return apiGet(`/api/v1/admin/submissions?page=${page}`, SubmissionPageSchema)
+export function listSubmissions(page: number, status: 'submitted' | 'published' | 'blocked' = 'submitted') {
+  return apiGet(`/api/v1/admin/submissions?${new URLSearchParams({ status, page: String(page) })}`, SubmissionPageSchema)
 }
 
 export function changeGameSlug(gameId: string, slug: string) {

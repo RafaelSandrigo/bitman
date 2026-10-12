@@ -35,8 +35,8 @@ como cada uma é mitigada e onde a mitigação é verificada. Uma mitigação se
 
 | # | Ameaça | Mitigação | Verificação |
 |---|---|---|---|
-| P1 | Conteúdo muda entre a análise e a publicação (TOCTOU) | Aprovação vinculada ao SHA-256 (I5): a decisão leva o hash do conteúdo exibido, e hash diferente é recusado. O conteúdo exibido é conferido contra o hash do fetch (quarentena adulterada → 409, nunca mostrada). A publicação recalcula o hash da quarentena (I6) | `ReviewGatesTest` (hash diferente, quarentena adulterada); publicação na Fase 5 |
-| P2 | Sobrescrita de versão publicada | Escrita write-once (I7) e índice parcial de versão publicada única (I8) | Testes de domínio e de banco |
+| P1 | Conteúdo muda entre a análise e a publicação (TOCTOU) | Aprovação vinculada ao SHA-256 (I5): a decisão leva o hash do conteúdo exibido, e hash diferente é recusado. O conteúdo exibido é conferido contra o hash do fetch (quarentena adulterada → 409, nunca mostrada). A publicação recalcula o hash da quarentena (I6), e o desbloqueio, o do archive | `ReviewGatesTest` (hash diferente, quarentena adulterada), `PublicationTest` (quarentena e archive adulterados) |
+| P2 | Sobrescrita de versão publicada | Escrita write-once (I7: criação exclusiva, nunca sobrescreve) e índice parcial de versão publicada única (I8) | `ArtifactStoreTest`, `PublicationTest` (archive existente, duas publicadas) |
 | P3 | Dono aprova o próprio conteúdo ou escala privilégio | Roles/permissions + Policy dentro da Action (I12). `status` não é *fillable* | Teste de feature: **todo** endpoint administrativo retorna 403 para `developer` e `player` |
 | P4 | Adulteração da auditoria | Tabela append-only com trigger no PostgreSQL | Teste de banco |
 
@@ -44,12 +44,12 @@ como cada uma é mitigada e onde a mitigação é verificada. Uma mitigação se
 
 | # | Ameaça | Mitigação | Verificação |
 |---|---|---|---|
-| J1 | XSS no hub / roubo de sessão | Jogos servidos em origem separada do hub ([ADR 0004](adr/0004-isolamento-dos-jogos.md)). `iframe sandbox="allow-scripts"` **sem** `allow-same-origin` (origem opaca). O nginx `games` também envia o header `Content-Security-Policy: sandbox allow-scripts`, de modo que o jogo continua isolado mesmo se aberto direto numa aba. Cookies do hub com prefixo `__Host-`, `HttpOnly`, `Secure`, `SameSite=Lax` | Teste E2E dos atributos e dos headers |
+| J1 | XSS no hub / roubo de sessão | Jogos servidos em origem separada do hub ([ADR 0004](adr/0004-isolamento-dos-jogos.md)). `iframe sandbox="allow-scripts"` **sem** `allow-same-origin` (origem opaca). O nginx `games` também envia o header `Content-Security-Policy: sandbox allow-scripts`, de modo que o jogo continua isolado mesmo se aberto direto numa aba. Cookies do hub com prefixo `__Host-`, `HttpOnly`, `Secure`, `SameSite=Lax` | `GamePage.test.tsx` (atributos do iframe), `tests/infra/games-origin.sh` (headers); E2E em navegador: [melhorias M11](melhorias.md) |
 | J2 | Exfiltração de dados / chamadas externas | CSP na origem de jogos: `default-src 'none'; script-src <games-origin>; style-src <games-origin>; img-src <games-origin> data:; connect-src 'none'; form-action 'none'; base-uri 'none'; frame-ancestors <hub-origin>` | Teste de headers do nginx `games` |
 | J3 | Navegação do topo, popups, phishing | Sandbox sem `allow-top-navigation`, `allow-popups`, `allow-forms` e `allow-modals`. `Permissions-Policy` negando câmera, microfone, geolocalização etc. A UI do hub delimita visualmente o conteúdo de terceiros | E2E |
 | J4 | Mensagens forjadas para o hub | A SPA aceita apenas mensagens com `event.source === iframe.contentWindow` que passem no schema Zod. Apenas um `game-over` por sessão | Testes unitários da bridge |
 | J5 | Admin "executa" ou é enganado pelo código ao revisar | O conteúdo chega como string JSON (`Cache-Control: no-store`) e o visualizador o mostra como **texto escapado** pelo React, linha a linha, nunca em `innerHTML` ou iframe. Caracteres bidirecionais e invisíveis ("Trojan Source", CVE-2021-42574) aparecem marcados como `⟦U+202E⟧`, com aviso. Sem realce de sintaxe por enquanto ([melhorias](melhorias.md)) | `VersionPage.test.tsx` (conteúdo hostil e Trojan Source), `ReviewGatesTest` |
-| J6 | Versão não aprovada sendo servida | Só `artefatos/served/{publicId}` é exposto. Bloqueio e retirada removem o diretório | Teste de feature |
+| J6 | Versão não aprovada sendo servida | Só `artifacts/served/{publicId}` é exposto, e só a publicação o cria (com o `rename` atômico de um staging que o nginx não serve). Bloqueio, retirada e substituição removem o diretório dentro da transação. A SPA só põe no iframe uma URL `{origem de jogos}/{UUID}/index.html` | `PublicationTest`, `EndToEndPublicationTest`, `config.test.ts`, `GamePage.test.tsx`, `tests/infra/games-origin.sh` |
 | J7 | Mineração / consumo de CPU no cliente | **Risco residual aceito.** Mitigado pela revisão humana e pela possibilidade de bloqueio imediato | — |
 
 ### Borda (Cloudflare + Traefik)

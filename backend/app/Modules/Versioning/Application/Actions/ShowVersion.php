@@ -25,7 +25,7 @@ final readonly class ShowVersion
         $this->gate->forUser($actor)->authorize(Permission::AuthorizeImports->value);
 
         $version = GameVersion::query()
-            ->with(['game', 'requestedBy', 'importDecidedBy', 'commitDecidedBy', 'rejectedBy', 'files.reviews.reviewer'])
+            ->with(['game', 'requestedBy', 'importDecidedBy', 'commitDecidedBy', 'rejectedBy', 'publishedBy', 'withdrawnBy', 'files.reviews.reviewer'])
             ->findOrFail($versionId);
 
         $previous = [];

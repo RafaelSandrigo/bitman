@@ -109,21 +109,25 @@ um servidor HTTPS falso dentro da allowlist).
 **Aceite:** ✅ a rejeição de um arquivo obrigatório rejeita a versão (`ReviewGatesTest`). ✅ A auditoria
 responde "quem aprovou qual hash, quando": `versioning.file-approved` com ator, data, `path` e `sha256`.
 
-## Fase 5 — Publicação e execução isolada ⬜
+## Fase 5 — Publicação e execução isolada ✅
 
-- `PublishVersion` (I6–I8): verifica os hashes, grava o `archive` write-once, cria
-  `served/{publicId}` e marca a versão anterior como `superseded`. Arquivos com `0644` e diretórios
-  com `0755`: o worker do nginx `bitman-games` precisa conseguir lê-los (descoberto no teste de infra da Fase 0).
-  Os volumes `quarantine` e `artifacts` já têm dono `www-data` (acertado na Fase 3; `make init` faz o mesmo numa instalação nova).
-- Retirar versão e bloquear/desbloquear jogo (J6).
-- nginx `games` com CSP e headers (J1–J3) e testes de headers.
-- Página inicial pública (cards de jogos publicados) e página `/games/{slug}` com o
-  iframe sandbox.
-- Histórico de versões do jogo no admin.
+- ✅ `PublishVersion` (I6–I8, `versions.publish`): recalcula o SHA-256 de cada arquivo da quarentena, grava o
+  `archive` write-once, cria `served/{publicId}` por `rename` atômico (diretórios `0755`, arquivos `0644`), tira a
+  versão anterior do ar (`superseded`) e desfaz o que gravou se algo falhar antes do commit. Detalhes em
+  [arquitetura.md](arquitetura.md#publicação).
+- ✅ Retirar versão (`versions.publish`) e bloquear/desbloquear jogo (`games.block`), com motivo (J6). O desbloqueio
+  volta a servir a partir do archive, conferindo os hashes de novo.
+- ✅ nginx `games` com CSP e headers (J1–J3): feito na Fase 0, com `tests/infra/games-origin.sh`; conferido em produção
+  pela URL pública (404 e `Cache-Control: no-store, no-transform` pela Cloudflare).
+- ✅ Página inicial pública (cards dos jogos publicados) e `/games/{slug}` com o iframe `sandbox="allow-scripts"`
+  (sem `allow-same-origin`, sem `allow`, sem Referer). A SPA só carrega uma URL `{origem de jogos}/{UUID}/index.html`.
+- ✅ Admin: página do jogo (no ar ou não, bloqueio, histórico de versões), aba **Jogos** (publicados e bloqueados),
+  publicar e retirar no detalhe da versão. O dono vê "Jogar" e o motivo de um bloqueio.
 
-**Aceite:** E2E — submeter → autorizar → aprovar commit → aprovar arquivos →
-publicar → jogo visível e executável. Uma versão não publicada nunca é acessível
-pela origem de jogos.
+**Aceite:** ✅ fluxo completo pela API — submeter → autorizar → aprovar commit → aprovar arquivos → publicar → jogo no
+catálogo com os arquivos servidos idênticos ao conteúdo aprovado (`EndToEndPublicationTest`). ✅ Uma versão não publicada
+nunca é acessível pela origem de jogos: só a publicação cria o diretório servido, e retirada, bloqueio e substituição o
+removem (`PublicationTest`). O E2E num navegador de verdade (Playwright) ficou para depois ([melhorias M11](melhorias.md)).
 
 ## Fase 6 — Partidas, scores e ranking ⬜
 

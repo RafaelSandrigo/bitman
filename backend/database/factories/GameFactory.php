@@ -37,14 +37,20 @@ final class GameFactory extends Factory
         ];
     }
 
+    /** Já teve uma versão publicada. A versão em si o teste cria (GameVersionFactory::published). */
     public function published(): static
     {
-        return $this->state(fn (array $attributes) => ['status' => GameStatus::Published]);
+        return $this->state(fn (array $attributes) => ['status' => GameStatus::Published, 'first_published_at' => now()]);
     }
 
     public function blocked(): static
     {
-        return $this->state(fn (array $attributes) => ['status' => GameStatus::Blocked]);
+        return $this->published()->state(fn (array $attributes) => [
+            'status' => GameStatus::Blocked,
+            'blocked_by_id' => User::factory()->admin(),
+            'blocked_at' => now(),
+            'block_reason' => 'Bloqueado em teste.',
+        ]);
     }
 
     public function rejected(): static

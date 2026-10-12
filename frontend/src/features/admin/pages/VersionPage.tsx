@@ -1,14 +1,25 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router'
 import { errorMessage } from '../../../shared/api/http'
+import { isPlayUrl } from '../../../shared/config'
 import { Alert } from '../../../shared/ui/Alert'
+import { Button } from '../../../shared/ui/Button'
 import { formatSize } from '../format'
 import { ImportDecision, NewImportButton } from '../ImportDecision'
 import { RejectWithReason } from '../RejectWithReason'
 import { CommitDecision, FileCard } from '../Review'
 import { useMarkSeen } from '../useMarkSeen'
 import { useRefreshVersions } from '../useRefreshVersions'
-import { getVersion, rejectVersion, versionStatusLabels, type Decision, type Report, type VersionDetail } from '../versions'
+import {
+  getVersion,
+  publishVersion,
+  rejectVersion,
+  versionStatusLabels,
+  withdrawVersion,
+  type Decision,
+  type Report,
+  type VersionDetail,
+} from '../versions'
 
 const dateFormat = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
 
@@ -67,6 +78,43 @@ function DecisionLine({ term, decision, approved }: { term: string; decision: De
   )
 }
 
+/** I6–I8: o servidor recalcula os hashes, grava o archive write-once e tira a versão anterior do ar. */
+function PublishPanel({ versionId }: { versionId: string }) {
+  const refresh = useRefreshVersions()
+  const publish = useMutation({ mutationFn: () => publishVersion(versionId), onSuccess: refresh })
+
+  return (
+    <div className="space-y-2 rounded-md border border-emerald-800 bg-emerald-950/30 p-4">
+      <p className="text-sm text-emerald-200">
+        Todos os arquivos aprovados. Publicar confere de novo o hash de cada arquivo, grava a versão de forma permanente e a coloca no ar,
+        substituindo a versão publicada antes (se houver).
+      </p>
+      <Button onClick={() => publish.mutate()} disabled={publish.isPending}>
+        Publicar versão
+      </Button>
+      {publish.isError && <Alert tone="error">{errorMessage(publish.error)}</Alert>}
+    </div>
+  )
+}
+
+/** Versão no ar: link para jogar e retirada com motivo (J6). */
+function PublishedPanel({ version }: { version: VersionDetail }) {
+  const refresh = useRefreshVersions()
+
+  return (
+    <section aria-label="Publicação" className="space-y-3">
+      <h2 className="text-lg font-semibold">No ar</h2>
+      <p className="text-sm text-slate-400">
+        Servida em <code className="break-all">{version.play_url && isPlayUrl(version.play_url) ? version.play_url : '—'}</code>.{' '}
+        <Link to={`/games/${version.game.slug}`} className="text-emerald-400 hover:underline">
+          Abrir a página do jogo
+        </Link>
+      </p>
+      <RejectWithReason label="Retirar versão" reject={(reason) => withdrawVersion(version.id, reason)} onDone={refresh} />
+    </section>
+  )
+}
+
 /** Portão 2: arquivos, decisão por arquivo e rejeição da versão inteira. */
 function FilesSection({ version }: { version: VersionDetail }) {
   const refresh = useRefreshVersions()
@@ -91,9 +139,7 @@ function FilesSection({ version }: { version: VersionDetail }) {
           ))}
         </ul>
       )}
-      {reviewing && approved === version.files.length && version.files.length > 0 && (
-        <Alert tone="success">Todos os arquivos aprovados. A versão está pronta para a publicação, que chega na próxima fase.</Alert>
-      )}
+      {reviewing && approved === version.files.length && version.files.length > 0 && <PublishPanel versionId={version.id} />}
       {reviewing && (
         <RejectWithReason label="Rejeitar versão" reject={(reason) => rejectVersion(version.id, reason)} onDone={refresh} />
       )}
@@ -125,6 +171,9 @@ export function VersionPage() {
         <h1 className="text-2xl font-bold">
           {v.game.name} <span className="text-slate-400">· versão {v.number}</span>
         </h1>
+        <Link to={`/admin/jogos/${encodeURIComponent(v.game.id)}`} className="text-sm text-emerald-400 hover:underline">
+          Jogo e histórico de versões
+        </Link>
         <p className="text-sm font-semibold text-slate-300">{versionStatusLabels[v.status]}</p>
       </header>
 
@@ -156,12 +205,14 @@ export function VersionPage() {
         )}
         <DecisionLine term="Portão 1" decision={v.commit_decision} approved="Commit aprovado" />
         <DecisionLine term="Rejeição" decision={v.rejection} approved="Rejeitada" />
+        <DecisionLine term="Publicação" decision={v.publication} approved="Publicada" />
+        <DecisionLine term="Retirada" decision={v.withdrawal} approved="Retirada" />
       </dl>
 
       {v.status === 'import_requested' && <ImportDecision version={v} />}
       {v.status === 'fetching' && <Alert tone="info">Buscando o repositório na sandbox… esta página atualiza sozinha.</Alert>}
       {v.fetch_failure && <Alert tone="error">{v.fetch_failure.message}</Alert>}
-      {(['fetch_failed', 'import_rejected', 'validation_failed', 'commit_rejected', 'rejected'] as const).some((status) => status === v.status) && (
+      {(['fetch_failed', 'import_rejected', 'validation_failed', 'commit_rejected', 'rejected', 'withdrawn'] as const).some((status) => status === v.status) && (
         <NewImportButton gameId={v.game.id} />
       )}
 
@@ -176,6 +227,7 @@ export function VersionPage() {
           <CommitDecision version={v} />
         </section>
       )}
+      {v.status === 'published' && <PublishedPanel version={v} />}
       {v.commit_sha && <FilesSection version={v} />}
 
       <Link to={`/admin/auditoria?subject_type=game_version&subject_id=${encodeURIComponent(v.id)}`} className="text-sm text-emerald-400 hover:underline">

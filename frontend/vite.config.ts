@@ -14,5 +14,6 @@ export default defineConfig({
     environmentOptions: { jsdom: { url: 'http://localhost/' } },
     setupFiles: ['./src/test/setup.ts'],
     restoreMocks: true,
+    env: { VITE_GAMES_ORIGIN: 'https://games.test' },
   },
 })

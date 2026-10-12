@@ -287,4 +287,99 @@ describe('VersionPage', () => {
 
     await waitFor(() => expect(queues.seen).toEqual([{ versions: [{ id: version.id, status: 'validation_failed' }] }]))
   })
+
+  describe('publicação (Fase 5)', () => {
+    const approvedFile = () => makeVersionFile({ review_status: 'approved' })
+    function strip(version: ReturnType<typeof makeVersionDetail>) {
+      const { game: _g, requested_by: _r, import_decision: _i, commit_decision: _c, rejection: _x, publication: _p, withdrawal: _w, play_url: _u, report: _rp, files: _f, ...data } = version
+      return data
+    }
+
+    it('com todos os arquivos aprovados, publica a versão', async () => {
+      let version = makeVersionDetail({ status: 'awaiting_file_review', files: [approvedFile()] })
+      let published = 0
+      server.use(
+        ...sessionHandlers(makeAdmin()).handlers,
+        http.get(`/api/v1/admin/versions/${version.id}`, () => HttpResponse.json({ data: version })),
+        http.post(`/api/v1/admin/versions/${version.id}/publish`, () => {
+          published++
+          version = {
+            ...version,
+            status: 'published',
+            public_id: '0b9f6a52-3c1e-4d7a-9b2e-5f8c1a2d3e4f',
+            play_url: 'https://games.test/0b9f6a52-3c1e-4d7a-9b2e-5f8c1a2d3e4f/index.html',
+            publication: { decided_by: { id: '1', name: 'Rafael' }, decided_at: '2026-10-12T15:00:00+00:00', rejection_reason: null },
+          }
+          return HttpResponse.json({ data: strip(version) })
+        }),
+      )
+      const { user } = renderAt(`/admin/versoes/${version.id}`)
+
+      await user.click(await screen.findByRole('button', { name: 'Publicar versão' }))
+
+      expect(await screen.findByText(/Publicada por Rafael/)).toBeInTheDocument()
+      expect(screen.getByText('https://games.test/0b9f6a52-3c1e-4d7a-9b2e-5f8c1a2d3e4f/index.html')).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'Abrir a página do jogo' })).toHaveAttribute('href', '/games/snake')
+      expect(published).toBe(1)
+    })
+
+    it('mostra o erro de integridade do servidor (I6) sem publicar', async () => {
+      const version = makeVersionDetail({ status: 'awaiting_file_review', files: [approvedFile()] })
+      server.use(
+        ...sessionHandlers(makeAdmin()).handlers,
+        http.get(`/api/v1/admin/versions/${version.id}`, () => HttpResponse.json({ data: version })),
+        http.post(`/api/v1/admin/versions/${version.id}/publish`, () =>
+          HttpResponse.json({ message: 'O conteúdo de game.js não confere com o hash aprovado. Nada foi publicado.' }, { status: 409 }),
+        ),
+      )
+      const { user } = renderAt(`/admin/versoes/${version.id}`)
+
+      await user.click(await screen.findByRole('button', { name: 'Publicar versão' }))
+
+      expect(await screen.findByText('O conteúdo de game.js não confere com o hash aprovado. Nada foi publicado.')).toBeInTheDocument()
+    })
+
+    it('sem todos aprovados, não há botão de publicar', async () => {
+      const version = makeVersionDetail({ status: 'awaiting_file_review', files: [approvedFile(), makeVersionFile({ path: 'style.css' })] })
+      serve(version)
+      renderAt(`/admin/versoes/${version.id}`)
+
+      expect(await screen.findByText(/1 de 2 aprovados/)).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Publicar versão' })).not.toBeInTheDocument()
+    })
+
+    it('retira a versão publicada com motivo', async () => {
+      const version = makeVersionDetail({
+        status: 'published',
+        public_id: '0b9f6a52-3c1e-4d7a-9b2e-5f8c1a2d3e4f',
+        play_url: 'https://games.test/0b9f6a52-3c1e-4d7a-9b2e-5f8c1a2d3e4f/index.html',
+        files: [approvedFile()],
+      })
+      const bodies: unknown[] = []
+      server.use(
+        ...sessionHandlers(makeAdmin()).handlers,
+        http.get(`/api/v1/admin/versions/${version.id}`, () => HttpResponse.json({ data: version })),
+        http.post(`/api/v1/admin/versions/${version.id}/withdraw`, async ({ request }) => {
+          bodies.push(await request.json())
+          return HttpResponse.json({ data: { ...strip(version), status: 'withdrawn' } })
+        }),
+      )
+      const { user } = renderAt(`/admin/versoes/${version.id}`)
+
+      await user.click(await screen.findByRole('button', { name: 'Retirar versão' }))
+      await user.type(screen.getByLabelText('Motivo da rejeição'), 'Trava o navegador.')
+      await user.click(screen.getByRole('button', { name: 'Confirmar rejeição' }))
+
+      await waitFor(() => expect(bodies).toEqual([{ reason: 'Trava o navegador.' }]))
+    })
+
+    it('uma play_url fora do formato nunca aparece', async () => {
+      const version = makeVersionDetail({ status: 'published', play_url: 'javascript:alert(1)', files: [approvedFile()] })
+      serve(version)
+      renderAt(`/admin/versoes/${version.id}`)
+
+      expect(await screen.findByRole('region', { name: 'Publicação' })).toBeInTheDocument()
+      expect(screen.queryByText('javascript:alert(1)')).not.toBeInTheDocument()
+    })
+  })
 })

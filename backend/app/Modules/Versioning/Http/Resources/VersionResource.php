@@ -31,6 +31,8 @@ class VersionResource extends JsonResource
             'blocked' => is_array($this->validation_report) ? (bool) ($this->validation_report['blocked'] ?? true) : null,
             'fetch_failure' => $failure === null ? null : ['code' => $failure->value, 'message' => $failure->message()],
             'fetched_at' => $this->fetched_at?->toIso8601String(),
+            'public_id' => $this->public_id,
+            'published_at' => $this->published_at?->toIso8601String(),
             'created_at' => $this->created_at->toIso8601String(),
             'game' => $this->whenLoaded('game', fn (): array => [
                 'id' => $this->game->id,

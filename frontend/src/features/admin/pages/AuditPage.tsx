@@ -21,6 +21,11 @@ const actionLabels: Record<string, string> = {
   'versioning.file-approved': 'Arquivo aprovado (Portão 2)',
   'versioning.file-rejected': 'Arquivo rejeitado (Portão 2)',
   'versioning.version-rejected': 'Versão rejeitada',
+  'versioning.version-published': 'Versão publicada',
+  'versioning.version-superseded': 'Versão substituída',
+  'versioning.version-withdrawn': 'Versão retirada',
+  'catalog.game-blocked': 'Jogo bloqueado',
+  'catalog.game-unblocked': 'Jogo desbloqueado',
 }
 
 const dateFormat = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'medium' })

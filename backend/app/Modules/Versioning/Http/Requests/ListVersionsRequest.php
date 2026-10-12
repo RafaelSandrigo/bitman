@@ -16,7 +16,15 @@ final class ListVersionsRequest extends FormRequest
         return [
             'status' => ['nullable', Rule::enum(VersionStatus::class)],
             'page' => ['nullable', 'integer', 'min:1'],
+            'game_id' => ['nullable', 'string', 'ulid'],
         ];
+    }
+
+    public function gameId(): ?string
+    {
+        $gameId = $this->validated('game_id');
+
+        return is_string($gameId) ? strtolower($gameId) : null;
     }
 
     public function status(): ?VersionStatus

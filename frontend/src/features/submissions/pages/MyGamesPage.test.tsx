@@ -1,7 +1,7 @@
 import { screen, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
-import { makeGame } from '../../../test/games'
+import { catalogHandler, makeGame } from '../../../test/games'
 import { renderAt } from '../../../test/render'
 import { server } from '../../../test/server'
 import { makeDeveloper, sessionHandlers } from '../../../test/session'
@@ -131,9 +131,26 @@ describe('MyGamesPage', () => {
   })
 
   it('o menu mostra "Meus jogos" para o developer', async () => {
-    server.use(...sessionHandlers(makeDeveloper()).handlers)
+    server.use(catalogHandler(), ...sessionHandlers(makeDeveloper()).handlers)
     renderAt('/')
 
     expect(await screen.findByRole('link', { name: 'Meus jogos' })).toHaveAttribute('href', '/desenvolvedor/jogos')
+  })
+
+  it('jogo publicado tem link para jogar; bloqueado mostra o motivo', async () => {
+    const live = makeGame({ name: 'Snake', status: 'published', published_version_id: 'v1', first_published_at: '2026-10-12T15:00:00+00:00' })
+    const blocked = makeGame({ name: 'Tetris', slug: 'tetris', status: 'blocked', block_reason: 'Minerador escondido.', first_published_at: '2026-10-12T15:00:00+00:00' })
+    server.use(
+      ...sessionHandlers(makeDeveloper()).handlers,
+      http.get('/api/v1/me/games', () => HttpResponse.json({ data: [live, blocked] })),
+      myVersions([makeMyVersion({ game_id: live.id, status: 'published', in_progress: false })]),
+    )
+    renderAt('/desenvolvedor/jogos')
+
+    const liveCard = await screen.findByRole('listitem', { name: 'Snake' })
+    expect(within(liveCard).getByRole('link', { name: 'Jogar →' })).toHaveAttribute('href', '/games/snake')
+    const blockedCard = screen.getByRole('listitem', { name: 'Tetris' })
+    expect(within(blockedCard).getByText('Jogo bloqueado. Motivo: Minerador escondido.')).toBeInTheDocument()
+    expect(within(blockedCard).queryByRole('link', { name: 'Jogar →' })).not.toBeInTheDocument()
   })
 })

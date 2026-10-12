@@ -96,3 +96,16 @@ it('a Action recusa quem não é admin mesmo sem passar pela rota (I12, defesa e
     expect(fn () => app(ChangeGameSlug::class)($owner, $game->id, Slug::fromString('meu-slug')))->toThrow(AuthorizationException::class)
         ->and($game->fresh()?->slug)->toBe('snake');
 });
+
+it('filtra os jogos por estado (publicados e bloqueados, para o bloqueio)', function (): void {
+    Game::factory()->create();
+    $published = Game::factory()->published()->create();
+    Game::factory()->blocked()->create();
+    $admin = User::factory()->admin()->create();
+
+    $this->actingAs($admin)->getJson('/api/v1/admin/submissions?status=published')
+        ->assertOk()
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.id', $published->id);
+    $this->actingAs($admin)->getJson('/api/v1/admin/submissions?status=hackeado')->assertUnprocessable();
+});

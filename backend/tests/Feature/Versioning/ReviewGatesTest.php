@@ -364,7 +364,7 @@ describe('detalhe e histórico', function (): void {
         $old = fileOf($first, 'game.js');
         app(ReviewFile::class)($admin, $first->id, $old->id, $old->sha256, FileDecision::Approved, null);
         // Encerra a primeira (como se tivesse sido publicada) para abrir a segunda.
-        DB::table('game_versions')->where('id', $first->id)->update(['status' => 'published']);
+        DB::table('game_versions')->where('id', $first->id)->update(['status' => 'published', 'public_id' => fake()->uuid(), 'published_by_id' => $admin->id, 'published_at' => now()]);
 
         $second = versionWithFiles(game: $game, contents: ['style.css' => 'body { color: red }']);
 

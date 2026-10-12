@@ -79,7 +79,12 @@ final class GameVersionFactory extends Factory
 
     public function published(): static
     {
-        return $this->awaitingFileReview()->state(fn (array $attributes) => ['status' => VersionStatus::Published]);
+        return $this->awaitingFileReview()->state(fn (array $attributes) => [
+            'status' => VersionStatus::Published,
+            'public_id' => fake()->uuid(),
+            'published_by_id' => User::factory()->admin(),
+            'published_at' => now(),
+        ]);
     }
 
     public function fetchFailed(): static

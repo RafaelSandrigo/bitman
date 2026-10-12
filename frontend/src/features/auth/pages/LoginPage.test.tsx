@@ -2,6 +2,7 @@ import { screen } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
 import { renderAt } from '../../../test/render'
+import { catalogHandler } from '../../../test/games'
 import { server } from '../../../test/server'
 import { makeUser, sessionHandlers } from '../../../test/session'
 
@@ -9,6 +10,7 @@ function loginSucceeds() {
   const session = sessionHandlers(null)
   let body: unknown
   server.use(
+    catalogHandler(),
     ...session.handlers,
     http.post('/api/v1/auth/login', async ({ request }) => {
       body = await request.json()
@@ -90,7 +92,7 @@ describe('LoginPage', () => {
   })
 
   it('quem já está logado não vê o login', async () => {
-    server.use(...sessionHandlers(makeUser()).handlers)
+    server.use(catalogHandler(), ...sessionHandlers(makeUser()).handlers)
     const { router } = renderAt('/entrar')
 
     expect(await screen.findByRole('heading', { level: 1, name: /bitman/i })).toBeInTheDocument()

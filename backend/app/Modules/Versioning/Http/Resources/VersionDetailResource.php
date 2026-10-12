@@ -9,6 +9,7 @@ use App\Modules\Versioning\Application\VersionDetails;
 use App\Modules\Versioning\Domain\FileReview;
 use App\Modules\Versioning\Domain\GameVersion;
 use App\Modules\Versioning\Domain\VersionFile;
+use App\Modules\Versioning\Domain\VersionStatus;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 
@@ -37,6 +38,11 @@ final class VersionDetailResource extends VersionResource
             'import_decision' => self::decision($this->importDecidedBy, $this->import_decided_at, $this->import_rejection_reason),
             'commit_decision' => self::decision($this->commitDecidedBy, $this->commit_decided_at, $this->commit_rejection_reason),
             'rejection' => self::decision($this->rejectedBy, $this->rejected_at, $this->rejection_reason),
+            'publication' => self::decision($this->publishedBy, $this->published_at, null),
+            'withdrawal' => self::decision($this->withdrawnBy, $this->withdrawn_at, $this->withdrawal_reason),
+            'play_url' => $this->status === VersionStatus::Published && $this->public_id !== null
+                ? config('publication.games_origin')."/{$this->public_id}/index.html"
+                : null,
             'report' => $this->validation_report,
             'files' => $this->files->map(fn (VersionFile $file): array => [
                 'id' => $file->id,

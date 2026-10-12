@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Modules\Versioning\Http\Controllers\Admin\ImportDecisionController;
+use App\Modules\Versioning\Http\Controllers\Admin\PublicationController;
 use App\Modules\Versioning\Http\Controllers\Admin\ReviewController;
 use App\Modules\Versioning\Http\Controllers\Admin\VersionController;
 use Illuminate\Support\Facades\Route;
@@ -21,3 +22,7 @@ Route::post('versions/{version}/reject-commit', [ReviewController::class, 'rejec
 Route::get('versions/{version}/files/{file}/content', [ReviewController::class, 'content'])->whereUlid(['version', 'file'])->name('versions.files.content');
 Route::post('versions/{version}/files/{file}/review', [ReviewController::class, 'reviewFile'])->whereUlid(['version', 'file'])->name('versions.files.review');
 Route::post('versions/{version}/reject', [ReviewController::class, 'rejectVersion'])->whereUlid('version')->name('versions.reject');
+
+// Publicação e retirada.
+Route::post('versions/{version}/publish', [PublicationController::class, 'publish'])->whereUlid('version')->name('versions.publish');
+Route::post('versions/{version}/withdraw', [PublicationController::class, 'withdraw'])->whereUlid('version')->name('versions.withdraw');
