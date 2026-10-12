@@ -11,6 +11,8 @@ namespace App\Modules\Identity\Domain;
 enum Permission: string
 {
     case SubmitGames = 'games.submit';
+    /** Fila de submissões e ajustes do catálogo (slug). */
+    case ManageGames = 'games.manage';
     case ManageRoles = 'users.manage-roles';
     case ViewAudit = 'audit.view';
 }

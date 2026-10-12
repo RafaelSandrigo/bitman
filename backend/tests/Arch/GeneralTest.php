@@ -13,6 +13,16 @@ arch('sem funções de depuração esquecidas')
 arch('preset de segurança do Pest')
     ->preset()->security();
 
-arch('value objects e DTOs do kernel compartilhado são readonly')
-    ->expect('App\Shared\ValueObjects')
+arch('value objects e DTOs são readonly')
+    ->expect([
+        'App\Shared\Domain\Git\RepositoryUrl',
+        'App\Shared\Domain\Git\GitRef',
+        'App\Modules\Catalog\Domain\Slug',
+        'App\Modules\Catalog\Application\SubmitGameInput',
+        'App\Modules\Audit\Domain\AuditRecord',
+    ])
+    ->toBeReadonly();
+
+arch('eventos de domínio são readonly')
+    ->expect('App\Modules\*\Domain\Events')
     ->toBeReadonly();

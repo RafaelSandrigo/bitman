@@ -1,5 +1,6 @@
 import { Navigate, Outlet, useLocation, useSearchParams } from 'react-router'
-import { safeNextPath, useCurrentUser } from '../features/auth/session'
+import type { Permission } from '../features/auth/api'
+import { hasPermission, safeNextPath, useCurrentUser } from '../features/auth/session'
 import { Alert } from '../shared/ui/Alert'
 
 function Loading() {
@@ -40,6 +41,25 @@ export function AdminGate() {
     )
   }
   if (!user.email_verified) return <Alert tone="error">Confirme seu e-mail para acessar a administração.</Alert>
+
+  return <Outlet />
+}
+
+/** Área que exige uma permissão (ex.: `games.submit` para a área do developer). Só conveniência de interface. */
+export function RequirePermission({ permission, deniedMessage }: { permission: Permission; deniedMessage: string }) {
+  const { data: user, isPending } = useCurrentUser()
+  const location = useLocation()
+
+  if (isPending) return <Loading />
+  if (!user) return <Navigate to={`/entrar?next=${encodeURIComponent(location.pathname + location.search)}`} replace />
+  if (!hasPermission(user, permission)) {
+    return (
+      <section className="space-y-4">
+        <h1 className="text-2xl font-semibold">Acesso negado</h1>
+        <p className="text-slate-400">{deniedMessage}</p>
+      </section>
+    )
+  }
 
   return <Outlet />
 }

@@ -27,7 +27,7 @@ make up                   # sobe a stack
 make migrate              # migrations + roles/permissões
 ```
 
-Primeiro admin: crie a conta no hub, confirme o e-mail (enquanto o Resend não estiver configurado,
+Primeiro admin: crie a conta no hub, confirme o e-mail (enviado pelo Resend; com `MAIL_MAILER=log`,
 o link aparece em `make logs s=queue`) e rode:
 
 ```bash

@@ -71,13 +71,13 @@ describe('área admin (só interface: quem autoriza é a API)', () => {
   it('mostra o link Admin e o painel para o admin', async () => {
     server.use(
       ...sessionHandlers(makeAdmin()).handlers,
-      http.get('/api/v1/admin/users', () =>
+      http.get('/api/v1/admin/submissions', () =>
         HttpResponse.json({ data: [], meta: { current_page: 1, last_page: 1, total: 0 } }),
       ),
     )
     renderAt('/admin')
 
-    expect(await screen.findByRole('heading', { name: 'Usuários' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Submissões' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Admin' })).toBeInTheDocument()
   })
 })

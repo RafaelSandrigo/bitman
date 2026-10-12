@@ -26,6 +26,7 @@ x-php: &php
     - ./.env:/var/www/html/.env:ro
     - quarantine:/var/bitman/quarantine
     - artifacts:/var/bitman/artifacts
+    - media:/var/bitman/media
   depends_on:
     postgres: { condition: service_healthy }
     redis: { condition: service_healthy }
@@ -39,6 +40,8 @@ services:
     volumes:
       - ./docker/web/templates:/etc/nginx/templates:ro
       - ./frontend/dist:/srv/spa:ro
+      # Thumbnails já re-codificadas em WebP pelo backend (A4).
+      - media:/srv/media:ro
     depends_on: [app]
     networks: [prod-network, internal]
     deploy:
@@ -246,4 +249,5 @@ volumes:
   redis_data:
   quarantine:
   artifacts:
+  media:
   frontend_node_modules:

@@ -49,6 +49,15 @@ return [
             'report' => false,
         ],
 
+        // Thumbnails re-codificadas pelo Catalog (A4), servidas pelo bitman-web em /media/thumbnails.
+        'thumbnails' => [
+            'driver' => 'local',
+            'root' => env('BITMAN_MEDIA_PATH', '/var/bitman/media').'/thumbnails',
+            'visibility' => 'public',
+            'throw' => true,
+            'report' => false,
+        ],
+
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),

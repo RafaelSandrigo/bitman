@@ -27,9 +27,13 @@ export function makeAdmin(overrides: Partial<CurrentUser> = {}): CurrentUser {
     name: 'Rafael',
     email: 'rafael@example.com',
     roles: ['player', 'admin'],
-    permissions: ['games.submit', 'users.manage-roles', 'audit.view'],
+    permissions: ['games.submit', 'games.manage', 'users.manage-roles', 'audit.view'],
     ...overrides,
   })
+}
+
+export function makeDeveloper(overrides: Partial<CurrentUser> = {}): CurrentUser {
+  return makeUser({ roles: ['player', 'developer'], permissions: ['games.submit'], ...overrides })
 }
 
 /**

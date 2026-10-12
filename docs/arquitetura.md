@@ -69,7 +69,7 @@ Ela segue as convenções do servidor compartilhado ([ADR 0010](adr/0010-infraes
 - **Um ambiente só:** não existe ambiente de desenvolvimento separado. O projeto é desenvolvido direto no
   servidor, em `/mnt/Dados/prog/prod/bitman`, num único `docker-compose.yml` (`name: bitman`), sempre
   operado pelo `Makefile`. Até o lançamento vale o **modo pré-lançamento** (abaixo).
-- **Dados:** volumes Docker nomeados (PostgreSQL, Redis, quarentena, artefatos e `node_modules` do frontend), nunca
+- **Dados:** volumes Docker nomeados (PostgreSQL, Redis, quarentena, artefatos, thumbnails e `node_modules` do frontend), nunca
   bind mount em `/mnt/Dados` (é NTFS, onde `chmod` não tem efeito). Os segredos ficam no `.env` da raiz, ignorado
   pelo git e entregue aos containers por `env_file` e, montado como `backend/.env`, somente leitura (padrão Carphook).
   Só o `.env.example` é versionado.
@@ -96,7 +96,7 @@ outra origem, e esse host só serve jogos publicados, em caminhos UUID não adiv
 
 | Serviço | Papel | Redes | Observações |
 |---|---|---|---|
-| `bitman-web` | nginx: serve `frontend/dist` e encaminha `/api`, `/sanctum` e `/up` para o php-fpm | prod-network, internal | SPA e API na **mesma origem** (cookies Sanctum sem CORS). CSP do hub e IP real via `CF-Connecting-IP` |
+| `bitman-web` | nginx: serve `frontend/dist` e as thumbnails (`/media/thumbnails`, volume `media` somente leitura) e encaminha `/api`, `/sanctum` e `/up` para o php-fpm | prod-network, internal | SPA e API na **mesma origem** (cookies Sanctum sem CORS). CSP do hub e IP real via `CF-Connecting-IP` |
 | `bitman-games` | nginx estático da origem de jogos | prod-network | Monta o subdiretório `served` do volume de artefatos, somente leitura. Só serve `/{uuid}/{index.html,style.css,game.js}`; o resto é 404 |
 | `app` | Laravel (php-fpm 8.5) | internal, egress | Imagem `bitman-php` (construída só por este serviço) |
 | `queue` | `queue:work` (filas `ingestion` e `default`) | internal, egress, sandbox | É o único que fala com a sandbox |
@@ -126,7 +126,7 @@ backend/app/
 │   ├── Ingestion/
 │   ├── Play/
 │   └── Audit/
-└── Shared/              # kernel compartilhado: Clock, Sha256, exceções base
+└── Shared/              # kernel compartilhado: eventos de domínio, exceção base, RepositoryUrl e GitRef (Domain/Git)
 ```
 
 Cada módulo usa as mesmas camadas, e só cria as que precisa:
@@ -177,6 +177,10 @@ Http ──► Application ──► Domain ◄── Infrastructure
   `email/verify/{id}/{hash}`, `email/verification-notification`), mais `GET /api/v1/me` ([ADR 0011](adr/0011-autenticacao-com-fortify.md)).
 - A SPA busca `/sanctum/csrf-cookie` antes da primeira requisição que altera estado e repete uma vez em caso de 419.
 - Os e-mails saem pela fila `default`, com links para as rotas da SPA (`/verificar-email?link=…`, `/redefinir-senha?token=…`).
+- Catálogo: `POST /api/v1/games` (submissão, multipart, `games.submit`) e `GET /api/v1/me/games`; no admin,
+  `GET /api/v1/admin/submissions` e `PATCH /api/v1/admin/games/{id}/slug` (`games.manage`).
+- Comunicação entre módulos: o Versioning escuta `Catalog\Domain\Events\GameSubmitted` (listener síncrono, mesma transação)
+  para criar a versão 1. Nenhum módulo altera tabelas de outro.
 
 ## Fluxos principais
 

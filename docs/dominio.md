@@ -59,7 +59,7 @@ diretamente os dados de outro contexto. Detalhes em [arquitetura.md](arquitetura
 |---|---|
 | `player` | — (joga e aparece nos rankings, com e-mail confirmado) |
 | `developer` | `games.submit` |
-| `admin` | todas (`games.submit`, `users.manage-roles`, `audit.view` e as das próximas fases) |
+| `admin` | todas (`games.submit`, `games.manage`, `users.manage-roles`, `audit.view` e as das próximas fases) |
 
 ### Game (Catalog)
 
@@ -68,8 +68,16 @@ diretamente os dados de outro contexto. Detalhes em [arquitetura.md](arquitetura
   `publishedVersionId` e as datas.
 - Status: `submitted` → `published` ⇄ `blocked`. Também existe `rejected`, quando a
   primeira versão é rejeitada; o dono pode solicitar uma nova importação.
-- O slug é gerado a partir do nome e pode ser editado pelo admin **até a primeira
-  publicação**. Depois disso é imutável (URIs públicas não quebram).
+- O slug é gerado a partir do nome (`Pac-Man Clássico` → `pac-man-classico`, com sufixo `-2`, `-3`… se já
+  existir) e pode ser editado pelo admin **até a primeira publicação** (`changeSlug`, auditado como
+  `catalog.slug-changed`). Depois disso é imutável (URIs públicas não quebram). Formato: 2 a 60 caracteres,
+  minúsculas e números separados por hífens.
+- `Game::submit()` é a única forma de criar um jogo. Ele registra `GameSubmitted` (auditado como
+  `catalog.game-submitted`), e o Versioning reage criando a versão 1 em `import_requested` (auditada como
+  `versioning.import-requested`), na mesma transação.
+- A URL do repositório e a ref são value objects do kernel compartilhado (`RepositoryUrl` e `GitRef`):
+  só `https`, hosts `github.com`, `gitlab.com` e `codeberg.org`, sem credenciais, porta, query ou fragmento,
+  e a URL é normalizada (`https://github.com/ada/snake.git` → `https://github.com/ada/snake`).
 
 ### GameVersion (Versioning) — agregado central
 

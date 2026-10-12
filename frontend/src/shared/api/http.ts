@@ -29,17 +29,19 @@ async function refreshCsrfCookie(): Promise<void> {
   await fetch(CSRF_COOKIE_PATH, { credentials: 'same-origin', headers: { Accept: 'application/json' } })
 }
 
+/** `FormData` (upload) vai como multipart, com o boundary definido pelo navegador; o resto, como JSON. */
 function send(method: Method, path: string, body: unknown): Promise<Response> {
   const headers: Record<string, string> = { Accept: 'application/json' }
   const token = xsrfToken()
   if (token) headers['X-XSRF-TOKEN'] = token
-  if (body !== undefined) headers['Content-Type'] = 'application/json'
+  const multipart = body instanceof FormData
+  if (body !== undefined && !multipart) headers['Content-Type'] = 'application/json'
 
   return fetch(path, {
     method,
     headers,
     credentials: 'same-origin',
-    body: body === undefined ? undefined : JSON.stringify(body),
+    body: body === undefined ? undefined : multipart ? body : JSON.stringify(body),
   })
 }
 

@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { apiGet, apiSend } from '../../shared/api/http'
 import { UserSchema } from '../auth/api'
+import { GameSchema } from '../catalog/game'
 
 const UserPageSchema = z.object({
   data: z.array(UserSchema),
@@ -50,4 +51,20 @@ export function listAuditEntries(filter: AuditFilter, cursor: string | null): Pr
   if (filter.subjectId) query.set('subject_id', filter.subjectId)
   if (cursor) query.set('cursor', cursor)
   return apiGet(`/api/v1/admin/audit-entries?${query}`, AuditPageSchema)
+}
+
+const SubmissionSchema = GameSchema.extend({ owner: z.object({ id: z.string(), name: z.string(), email: z.string() }) })
+export type Submission = z.infer<typeof SubmissionSchema>
+
+const SubmissionPageSchema = z.object({
+  data: z.array(SubmissionSchema),
+  meta: z.object({ current_page: z.number(), last_page: z.number(), total: z.number() }),
+})
+
+export function listSubmissions(page: number) {
+  return apiGet(`/api/v1/admin/submissions?page=${page}`, SubmissionPageSchema)
+}
+
+export function changeGameSlug(gameId: string, slug: string) {
+  return apiSend('PATCH', `/api/v1/admin/games/${encodeURIComponent(gameId)}/slug`, z.object({ data: GameSchema }), { slug })
 }

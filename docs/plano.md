@@ -31,7 +31,7 @@ Status: ⬜ não iniciada · 🟨 em andamento · ✅ concluída
 - ✅ Cadastro, login e logout com Fortify headless em `/api/v1/auth` ([ADR 0011](adr/0011-autenticacao-com-fortify.md)).
   Rate limit no login por e-mail + IP (A2) e em todas as rotas de autenticação.
 - ✅ Verificação de e-mail e recuperação de senha, com e-mails em pt-BR enviados pela fila e links para a SPA (A5).
-  O "esqueci a senha" não revela se a conta existe. Envio pelo Resend via SMTP, como no CPO (falta a API key).
+  O "esqueci a senha" não revela se a conta existe. Envio pelo Resend via SMTP, como no CPO.
 - ✅ Usuários com ULID. Roles `player` (padrão), `developer` e `admin` como enums do domínio, com permissões granulares
   sincronizadas pelo seeder (`make migrate`).
 - ✅ Comando `php artisan user:grant-role {email} {role}` (bootstrap do primeiro admin), auditado com ator nulo.
@@ -48,16 +48,22 @@ Status: ⬜ não iniciada · 🟨 em andamento · ✅ concluída
 ✅ A concessão de role gera um `AuditEntry` na mesma transação, e não o gera se a transação falhar.
 ✅ Fluxo verificado em produção (cadastro → e-mail → confirmação → login/logout → CSRF), e a conta de teste foi removida.
 
-## Fase 2 — Catálogo e submissão ⬜
+## Fase 2 — Catálogo e submissão ✅
 
-- Agregado `Game`. Value objects `Slug`, `RepositoryUrl` (G1–G3) e `GitRef`.
-- Submissão pelo `developer`: nome, descrição, autor, thumbnail (A4), URL e ref. Cria
-  o `Game` (`submitted`) e a `GameVersion` 1 (`import_requested`).
-- "Meus jogos": o dono acompanha o status, somente leitura.
-- Admin: fila de submissões, com edição de slug antes da publicação.
+- ✅ Módulos `Catalog` e `Versioning`. Agregados `Game` e `GameVersion`; value objects `Slug` (Catalog) e
+  `RepositoryUrl` (G1–G3) e `GitRef` (G1) no kernel compartilhado, porque Catalog, Versioning e Ingestion os usam.
+- ✅ Submissão pelo `developer` (`POST /api/v1/games`): nome, descrição, autor, thumbnail (A4), URL e ref. Cria
+  o `Game` (`submitted`) e, pelo evento `GameSubmitted`, a `GameVersion` 1 (`import_requested`), na mesma transação
+  e com os dois registros de auditoria. Limite de 10 submissões por hora por usuário.
+- ✅ Thumbnail: porta `ThumbnailProcessor` + adaptador GD (PNG/JPEG/WebP pelo conteúdo, até 2 MB, de 64 a 4096 px,
+  re-codificada em WebP de até 800 px, sem metadados e com nome aleatório), servida pelo `bitman-web` em
+  `/media/thumbnails` a partir do volume `media`.
+- ✅ "Meus jogos" (`GET /api/v1/me/games`): o dono acompanha o status, somente leitura.
+- ✅ Admin: fila de submissões, com edição de slug até a primeira publicação (auditada). Permissão `games.manage`.
+- ✅ Frontend: área do developer (`/desenvolvedor/jogos` e `/desenvolvedor/enviar`) e `/admin/submissoes`.
 
-**Aceite:** uma URL inválida, de host fora da allowlist ou com credenciais é rejeitada
-na submissão. Nenhuma chamada de rede ocorre (I2).
+**Aceite:** ✅ uma URL inválida, de host fora da allowlist ou com credenciais é rejeitada na submissão, sem criar nada.
+✅ Nenhuma chamada de rede nem job ocorre (I2): `SubmitGameTest` com `Http::assertNothingSent()` e `Queue::assertNothingPushed()`.
 
 ## Fase 3 — Ingestão segura (Portão 0) ⬜
 
@@ -89,6 +95,8 @@ responde "quem aprovou qual hash, quando".
 - `PublishVersion` (I6–I8): verifica os hashes, grava o `archive` write-once, cria
   `served/{publicId}` e marca a versão anterior como `superseded`. Arquivos com `0644` e diretórios
   com `0755`: o worker do nginx `bitman-games` precisa conseguir lê-los (descoberto no teste de infra da Fase 0).
+  Os volumes `quarantine` e `artifacts` foram criados com dono `root`, mas o php-fpm roda como `www-data`: acertar o
+  dono antes de gravar neles (o volume `media` já nasce com `www-data`, pela imagem; descoberto na Fase 2).
 - Retirar versão e bloquear/desbloquear jogo (J6).
 - nginx `games` com CSP e headers (J1–J3) e testes de headers.
 - Página inicial pública (cards de jogos publicados) e página `/games/{slug}` com o
@@ -138,8 +146,9 @@ Executado quando o Bitman sair do pré-lançamento:
 - [ ] Conferir `APP_ENV=production` e `APP_DEBUG=false`.
 - [ ] Ativar o deploy pelo deploy-hub (script, hook, tokens e aprovação do hash).
 - [ ] Teste de fumaça pós-deploy (headers e hash dos arquivos servidos).
-- [ ] Backups dos volumes `postgres_data` e `artifacts`.
-- [ ] Resend configurado (`MAIL_MAILER=smtp` e `MAIL_PASSWORD`) e um e-mail real de verificação recebido. Depois, remover o `MAIL_LOG_CHANNEL`.
+- [ ] Backups dos volumes `postgres_data`, `artifacts` e `media`.
+- [x] Resend configurado (`MAIL_MAILER=smtp` e `MAIL_PASSWORD`) e um e-mail real de verificação recebido (2026-10-11).
+- [ ] Remover o `MAIL_LOG_CHANNEL` do `.env`.
 
 ## Fora do escopo do MVP
 
@@ -159,7 +168,8 @@ validação autoritativa de score; multiplayer; comentários e avaliações.
 | Isolamento do Git | Serviço sandbox permanente + egress proxy com allowlist ([ADR 0003](adr/0003-git-sandbox.md)) |
 | Infraestrutura e deploy | Servidor compartilhado: Cloudflare → Traefik, deploy-hub e GitHub Actions ([ADR 0010](adr/0010-infraestrutura-homelab.md)) |
 | Cadastro | E-mail + senha, com verificação de e-mail e recuperação de senha |
-| Envio de e-mail | Resend via SMTP (`smtp.resend.com:587`), como no CPO. Remetente `nao-responda@bitman.sandrigo.com.br` |
+| Envio de e-mail | Resend via SMTP (`smtp.resend.com:587`), como no CPO. Remetente `nao-responda@bitman.sandrigo.com.br` (configurado em 2026-10-11) |
+| Thumbnail na submissão | Obrigatória (os cards do catálogo dependem dela) |
 
 ## Pendências com o Rafael
 
@@ -167,7 +177,6 @@ Ações que dependem de acesso ou de decisão externa. Nenhuma bloqueia o iníci
 
 | Pendência | Necessária até |
 |---|---|
-| Resend: verificar o domínio `bitman.sandrigo.com.br` e criar uma API key própria do Bitman (só envio) para o `MAIL_PASSWORD`. Até lá, `MAIL_MAILER=log` e os e-mails aparecem em `make logs s=queue` | Antes do lançamento |
-| Criar a própria conta no hub e virar admin: `make artisan c="user:grant-role seu@email admin"` (precisa do e-mail confirmado) | Fase 2 |
+| Virar admin (a conta já existe e o e-mail está confirmado): `make artisan c="user:grant-role seu@email admin"` | Fase 3 |
 | Service Token do Cloudflare Access, `X-Deploy-Token` e aprovação do hash do `deploy-bitman.sh` | Fase 8 |
 | Garantir que nenhum sistema em `*.sandrigo.com.br` emita cookies com `Domain=.sandrigo.com.br` | Fase 8 |

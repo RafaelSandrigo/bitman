@@ -6,6 +6,28 @@ import { ApiError, apiGet, apiSend, errorMessage, fieldErrors, NoContent } from 
 
 const Health = z.object({ status: z.literal('ok') })
 
+describe('apiSend com FormData', () => {
+  it('envia multipart (sem forçar JSON) com o token XSRF', async () => {
+    document.cookie = 'XSRF-TOKEN=abc'
+    let seen: { type: string | null; xsrf: string | null; name: FormDataEntryValue | null } | undefined
+    server.use(
+      http.post('/api/upload', async ({ request }) => {
+        const form = await request.formData()
+        seen = { type: request.headers.get('Content-Type'), xsrf: request.headers.get('X-XSRF-TOKEN'), name: form.get('name') }
+        return new HttpResponse(null, { status: 204 })
+      }),
+    )
+    const body = new FormData()
+    body.append('name', 'Snake')
+
+    await apiSend('POST', '/api/upload', NoContent, body)
+
+    expect(seen?.type).toMatch(/^multipart\/form-data; boundary=/)
+    expect(seen?.xsrf).toBe('abc')
+    expect(seen?.name).toBe('Snake')
+  })
+})
+
 describe('apiGet', () => {
   it('retorna o corpo validado pelo schema', async () => {
     server.use(http.get('/api/health', () => HttpResponse.json({ status: 'ok' })))

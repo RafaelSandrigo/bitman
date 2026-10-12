@@ -36,6 +36,21 @@ server {
         fastcgi_hide_header X-Powered-By;
     }
 
+    # Thumbnails (A4): só arquivos com o nome aleatório gerado pelo backend; o resto de /media é 404.
+    location ~ "^/media/thumbnails/[0-9a-f]{32}\.webp$" {
+        root /srv;
+        types { }
+        default_type image/webp;
+        try_files $uri =404;
+        add_header Cache-Control "public, max-age=31536000, immutable" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header Content-Security-Policy "default-src 'none'" always;
+    }
+
+    location /media/ {
+        return 404;
+    }
+
     location /assets/ {
         try_files $uri =404;
         add_header Cache-Control "public, max-age=31536000, immutable" always;

@@ -1,5 +1,6 @@
 import { Link, NavLink, Outlet, useNavigate } from 'react-router'
-import { useCurrentUser, useLogout } from '../features/auth/session'
+import { Permission } from '../features/auth/api'
+import { hasPermission, useCurrentUser, useLogout } from '../features/auth/session'
 
 function UserMenu() {
   const { data: user } = useCurrentUser()
@@ -21,6 +22,11 @@ function UserMenu() {
 
   return (
     <div className="flex items-center gap-4 text-sm">
+      {hasPermission(user, Permission.SubmitGames) && (
+        <NavLink to="/desenvolvedor/jogos" className="hover:text-emerald-400">
+          Meus jogos
+        </NavLink>
+      )}
       {user.roles.includes('admin') && (
         <NavLink to="/admin" className="hover:text-emerald-400">
           Admin

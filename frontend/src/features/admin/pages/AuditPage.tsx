@@ -9,6 +9,9 @@ import { listAuditEntries, type AuditEntry, type AuditFilter } from '../api'
 const actionLabels: Record<string, string> = {
   'identity.role-granted': 'Role concedida',
   'identity.role-revoked': 'Role removida',
+  'catalog.game-submitted': 'Jogo submetido',
+  'catalog.slug-changed': 'Slug alterado',
+  'versioning.import-requested': 'Importação solicitada',
 }
 
 const dateFormat = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'medium' })

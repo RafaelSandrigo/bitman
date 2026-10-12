@@ -19,6 +19,7 @@ export type CurrentUser = z.infer<typeof CurrentUserSchema>
 
 export const Permission = {
   SubmitGames: 'games.submit',
+  ManageGames: 'games.manage',
   ManageRoles: 'users.manage-roles',
   ViewAudit: 'audit.view',
 } as const
