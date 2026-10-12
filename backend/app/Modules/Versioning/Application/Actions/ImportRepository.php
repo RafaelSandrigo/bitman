@@ -26,6 +26,7 @@ use Throwable;
 /**
  * Executa a busca autorizada no Portão 0 (roda na fila `ingestion`, como sistema):
  * sandbox → snapshot → política → quarentena → diff com a versão publicada → Portão 1.
+ * Com violação bloqueante, nada vai para a quarentena e a versão termina em `validation_failed`.
  *
  * Nunca termina com erro não tratado: qualquer falha leva a versão para `fetch_failed`.
  */
@@ -50,7 +51,7 @@ final readonly class ImportRepository
         try {
             $snapshot = $this->fetch($version);
             $report = $this->policy->evaluate($snapshot);
-            $files = $this->quarantineFiles($version, $snapshot);
+            $files = $report->isBlocked() ? [] : $this->quarantineFiles($version, $snapshot);
 
             $this->db->transaction(function () use ($versionId, $snapshot, $report, $files): void {
                 $version = GameVersion::query()->lockForUpdate()->findOrFail($versionId);
@@ -100,8 +101,8 @@ final readonly class ImportRepository
     }
 
     /**
-     * Grava na quarentena só os obrigatórios que são arquivos comuns, dentro do limite e com o
-     * conteúdo entregue (G6: nada além da allowlist). O diff é contra a versão publicada do jogo.
+     * Grava na quarentena os obrigatórios (G6: nada além da allowlist). Só roda sem violação, mas
+     * confere de novo cada arquivo (defesa em profundidade). O diff é contra a versão publicada do jogo.
      *
      * @return list<QuarantinedFile>
      */

@@ -14,6 +14,8 @@ enum VersionStatus: string
     case ImportRejected = 'import_rejected';
     case Fetching = 'fetching';
     case FetchFailed = 'fetch_failed';
+    /** Busca concluída, mas o repositório viola a política (bloqueante): o dono corrige e reenvia. */
+    case ValidationFailed = 'validation_failed';
     case AwaitingCommitReview = 'awaiting_commit_review';
     case CommitRejected = 'commit_rejected';
     case AwaitingFileReview = 'awaiting_file_review';
@@ -45,6 +47,7 @@ enum VersionStatus: string
             self::ImportRejected => 'com a importação rejeitada',
             self::Fetching => 'em busca',
             self::FetchFailed => 'com a busca falha',
+            self::ValidationFailed => 'reprovada na validação',
             self::AwaitingCommitReview => 'aguardando a revisão do commit',
             self::CommitRejected => 'com o commit rejeitado',
             self::AwaitingFileReview => 'aguardando a revisão dos arquivos',

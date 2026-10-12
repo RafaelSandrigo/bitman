@@ -27,6 +27,7 @@ describe('SubmitGamePage', () => {
         return HttpResponse.json({ data: game }, { status: 201 })
       }),
       http.get('/api/v1/me/games', () => HttpResponse.json({ data: [game] })),
+      http.get('/api/v1/me/versions', () => HttpResponse.json({ data: [] })),
     )
     const { user } = renderAt('/desenvolvedor/enviar')
 

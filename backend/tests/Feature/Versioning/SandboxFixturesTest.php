@@ -70,12 +70,14 @@ it('o jogo válido chega ao Portão 1 sem violações, com o commit e os 3 arqui
         ]);
 })->with(['valid', 'valid-tag']);
 
-it('fixture maliciosa → violação bloqueante (I3)', function (string $fixture, array $codes): void {
+it('fixture maliciosa → violação bloqueante, versão reprovada sem nada na quarentena (I3)', function (string $fixture, array $codes): void {
     $version = importFixture($fixture);
 
-    expect($version->status)->toBe(VersionStatus::AwaitingCommitReview)
+    expect($version->status)->toBe(VersionStatus::ValidationFailed)
         ->and($version->validation_report['blocked'] ?? null)->toBeTrue()
-        ->and(array_column($version->validation_report['violations'] ?? [], 'code'))->toBe($codes);
+        ->and(array_column($version->validation_report['violations'] ?? [], 'code'))->toBe($codes)
+        ->and($version->files)->toBeEmpty()
+        ->and(Storage::disk('quarantine')->allFiles())->toBe([]);
 })->with([
     'symlink no obrigatório' => ['symlink', ['required_file_not_regular', 'symlink']],
     'symlink fora dos obrigatórios' => ['symlink-extra', ['symlink']],
@@ -112,5 +114,6 @@ it('o blob acima do limite nunca é baixado para a aplicação (G7)', function (
     $manifest = sandboxManifests()['huge']['body'];
 
     expect($manifest['blobs'])->not->toHaveKey('game.js')
-        ->and(importFixture('huge')->files->pluck('path')->all())->toBe(['index.html', 'style.css']);
+        ->and(importFixture('huge')->status)->toBe(VersionStatus::ValidationFailed)
+        ->and(Storage::disk('quarantine')->allFiles())->toBe([]);
 });

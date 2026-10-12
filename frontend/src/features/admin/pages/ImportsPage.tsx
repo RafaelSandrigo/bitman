@@ -7,7 +7,7 @@ import { Button } from '../../../shared/ui/Button'
 import { ImportDecision, NewImportButton } from '../ImportDecision'
 import { listVersions, versionStatusLabels, type Version, type VersionStatus } from '../versions'
 
-const queues: VersionStatus[] = ['import_requested', 'fetching', 'awaiting_commit_review', 'fetch_failed', 'import_rejected']
+const queues: VersionStatus[] = ['import_requested', 'fetching', 'awaiting_commit_review', 'validation_failed', 'fetch_failed', 'import_rejected']
 
 const dateFormat = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
 
@@ -47,12 +47,15 @@ function VersionCard({ version }: { version: Version }) {
 
       {version.status === 'import_requested' && <ImportDecision version={version} />}
       {version.status === 'fetching' && <p className="text-slate-300">Buscando o repositório na sandbox…</p>}
-      {version.status === 'awaiting_commit_review' &&
-        (version.blocked ? (
-          <Alert tone="error">Bloqueada pela política de repositório. Veja as violações nos detalhes.</Alert>
-        ) : (
-          <Alert tone="success">Sem violações. A revisão do commit (Portão 1) chega na próxima fase.</Alert>
-        ))}
+      {version.status === 'awaiting_commit_review' && (
+        <Alert tone="success">Sem violações. A revisão do commit (Portão 1) chega na próxima fase.</Alert>
+      )}
+      {version.status === 'validation_failed' && (
+        <Alert tone="error">
+          Reprovada pela política de repositório. O desenvolvedor vê as violações e pode reenviar depois de corrigir.
+        </Alert>
+      )}
+      {version.status === 'validation_failed' && <NewImportButton gameId={version.game.id} />}
       {version.status === 'fetch_failed' && (
         <>
           <Alert tone="error">{version.fetch_failure?.message ?? 'A busca falhou.'}</Alert>

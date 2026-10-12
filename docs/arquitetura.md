@@ -205,8 +205,12 @@ sequenceDiagram
     S->>G: git clone --bare --depth=1 --filter=blob:limit (somente HTTPS, sem redirects)
     S-->>Q: manifesto: commitSha, árvore (path, modo, tamanho), blobs permitidos (ou só um código de erro)
     Q->>Q: Revalida tudo (zero trust também na sandbox): RepositoryPolicy → ValidationReport
-    Q->>Q: Grava blobs na quarentena; calcula SHA-256; diff com a versão publicada
-    Q->>API: transição fetching → awaiting_commit_review
+    alt violação bloqueante
+        Q->>API: transição fetching → validation_failed (nada na quarentena; o dono vê o motivo e reenvia)
+    else sem violações
+        Q->>Q: Grava blobs na quarentena; calcula SHA-256; diff com a versão publicada
+        Q->>API: transição fetching → awaiting_commit_review
+    end
     Admin->>API: POST /admin/versions/{id}/approve-commit
 ```
 

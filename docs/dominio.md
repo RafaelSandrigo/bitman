@@ -92,7 +92,8 @@ stateDiagram-v2
     import_requested --> import_rejected: Portão 0 — admin rejeita
     import_requested --> fetching: Portão 0 — admin autoriza
     fetching --> fetch_failed: erro, timeout ou limite excedido
-    fetching --> awaiting_commit_review: commit resolvido + relatório gerado
+    fetching --> validation_failed: relatório com violação bloqueante
+    fetching --> awaiting_commit_review: commit resolvido + relatório sem violações
     awaiting_commit_review --> commit_rejected: Portão 1 — admin rejeita
     awaiting_commit_review --> awaiting_file_review: Portão 1 — admin aprova (sem violações bloqueantes)
     awaiting_file_review --> rejected: admin rejeita arquivo obrigatório ou a versão
@@ -101,6 +102,7 @@ stateDiagram-v2
     published --> withdrawn: admin retira a versão
     import_rejected --> [*]
     fetch_failed --> [*]
+    validation_failed --> [*]
     commit_rejected --> [*]
     rejected --> [*]
     superseded --> [*]
@@ -108,7 +110,11 @@ stateDiagram-v2
 ```
 
 Estados terminais nunca voltam. Para tentar de novo, cria-se uma **nova versão**
-(`RequestNewImport`, pela URL e ref atuais do jogo, de volta ao Portão 0). Um jogo tem
+(`RequestNewImport`, pela URL e ref atuais do jogo, de volta ao Portão 0). Quem pede é o
+**dono** (reenvio em "Meus jogos", com a permissão de submeter) ou o admin; jogo bloqueado não
+recebe versão nova. O dono vê a versão mais recente de cada jogo (`GET /api/v1/me/versions`):
+o estado e, quando parou, o motivo — violações da política, motivo da rejeição do Portão 0 ou a
+mensagem da falha da busca —, nunca quem decidiu nem a lista de arquivos ignorados. Um jogo tem
 **no máximo uma versão em andamento** (`import_requested`, `fetching`,
 `awaiting_commit_review`, `awaiting_file_review`), garantido por índice parcial no banco.
 A partir de `awaiting_commit_review`, `commit_sha` e o relatório são obrigatórios (`CHECK`, I13).
@@ -185,8 +191,10 @@ relatório, bytes de controle e UTF-8 inválido aparecem escapados como `\xNN`.
   `timeout`, `too_large`, `too_many_entries`, `invalid_objects`, `sandbox_unavailable`,
   `invalid_response`, `internal`… A versão vai para `fetch_failed` com o código, e o admin vê a
   mensagem correspondente. Nenhum texto do servidor remoto chega à aplicação.
-- Com violações, a versão vai para `awaiting_commit_review` mesmo assim, com o relatório
-  `blocked`: o Portão 1 é que fica impedido de aprovar (I3).
+- Com violação bloqueante, a versão termina em `validation_failed`, com o commit e o relatório,
+  e nada vai para a quarentena (`CHECK` no banco: esse estado exige relatório `blocked`). Assim
+  nenhuma versão bloqueada chega ao Portão 1 (I3) e o jogo não fica travado: o dono corrige o
+  repositório e reenvia.
 
 ## Invariantes
 

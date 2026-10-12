@@ -28,6 +28,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use LogicException;
 
 /**
  * Agregado central do versionamento. Nasce como solicitação de importação: nenhum acesso à
@@ -108,15 +109,19 @@ final class GameVersion extends Model implements EmitsDomainEvents
 
     /**
      * Fetch concluído: commit resolvido, relatório da política e os arquivos já na quarentena.
-     * A versão vai para o Portão 1 mesmo com violações; a aprovação é que fica bloqueada (I3).
+     * Sem violações, a versão vai para o Portão 1. Com violação bloqueante, termina em
+     * `validation_failed` sem arquivo candidato (I3): o dono corrige o repositório e reenvia.
      *
      * @param  list<QuarantinedFile>  $files
      */
     public function completeFetch(CommitSha $commit, ValidationReport $report, array $files): void
     {
         $this->ensureStatus(VersionStatus::Fetching, 'concluir a busca');
+        if ($report->isBlocked() && $files !== []) {
+            throw new LogicException('Versão bloqueada pela política não tem arquivos candidatos.');
+        }
 
-        $this->status = VersionStatus::AwaitingCommitReview;
+        $this->status = $report->isBlocked() ? VersionStatus::ValidationFailed : VersionStatus::AwaitingCommitReview;
         $this->commit_sha = $commit->value;
         $this->validation_report = $report->toArray();
         $this->fetched_at = CarbonImmutable::now();

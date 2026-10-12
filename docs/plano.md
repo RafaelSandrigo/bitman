@@ -75,8 +75,12 @@ Status: ⬜ não iniciada · 🟨 em andamento · ✅ concluída
   paths em base64, só os blobs pedidos e cada blob conferido contra o objeto Git da árvore) + `FakeGitSourceFetcher`.
 - ✅ `RepositoryPolicy` com as 8 regras de [dominio.md](dominio.md#política-de-repositório-mvp), uma classe cada (TDD).
 - ✅ Admin › Importações: autorizar ou rejeitar (com motivo) no Portão 0 → `FetchRepositoryJob` (fila `ingestion`) →
-  quarentena (`{versionId}/{sha256}`) → `ValidationReport` → diff com a versão publicada → `awaiting_commit_review`.
+  quarentena (`{versionId}/{sha256}`) → `ValidationReport` → diff com a versão publicada → `awaiting_commit_review`
+  (ou `validation_failed`, ver abaixo).
   Detalhe da versão com o relatório, os arquivos e os ignorados. Nova importação depois de falha ou rejeição.
+- ✅ Violação bloqueante → `validation_failed` (terminal, sem quarentena), em vez de parar no Portão 1.
+  "Meus jogos" mostra ao dono o estado da versão mais recente e o motivo (violações, rejeição do Portão 0
+  ou falha da busca), com **Enviar novamente**: nova versão, de volta à autorização do admin.
 - ✅ Repositórios-fixture (`tests/sandbox`): válido, tag, symlink (obrigatório e extra), submodule, executável, arquivo
   gigante, binário, nomes hostis, árvores forjadas com `..` e `.git`, árvore grande e acima do teto, sem obrigatórios e
   commit vazio. Gerados e buscados pela imagem real da sandbox, sem rede; o manifesto de cada um é um golden versionado.

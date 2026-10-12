@@ -7,7 +7,6 @@ use App\Modules\Catalog\Domain\Game;
 use App\Modules\Identity\Domain\User;
 use App\Modules\Versioning\Application\Actions\AuthorizeImport;
 use App\Modules\Versioning\Application\Actions\RejectImport;
-use App\Modules\Versioning\Application\Actions\RequestNewImport;
 use App\Modules\Versioning\Domain\DecisionReason;
 use App\Modules\Versioning\Domain\GameVersion;
 use App\Modules\Versioning\Domain\VersionStatus;
@@ -106,7 +105,6 @@ it('as Actions do Portão 0 recusam quem não é admin, inclusive o dono do jogo
 
     expect(fn () => app(AuthorizeImport::class)($owner, $version->id))->toThrow(AuthorizationException::class)
         ->and(fn () => app(RejectImport::class)($owner, $version->id, DecisionReason::fromString('Não quero')))->toThrow(AuthorizationException::class)
-        ->and(fn () => app(RequestNewImport::class)($owner, $game->id))->toThrow(AuthorizationException::class)
         ->and($version->fresh()?->status)->toBe(VersionStatus::ImportRequested);
 });
 

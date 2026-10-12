@@ -161,7 +161,9 @@ export function VersionPage() {
       {v.status === 'import_requested' && <ImportDecision version={v} />}
       {v.status === 'fetching' && <Alert tone="info">Buscando o repositório na sandbox… esta página atualiza sozinha.</Alert>}
       {v.fetch_failure && <Alert tone="error">{v.fetch_failure.message}</Alert>}
-      {(v.status === 'fetch_failed' || v.status === 'import_rejected') && <NewImportButton gameId={v.game.id} />}
+      {(v.status === 'fetch_failed' || v.status === 'import_rejected' || v.status === 'validation_failed') && (
+        <NewImportButton gameId={v.game.id} />
+      )}
 
       {v.report && <ReportSection report={v.report} />}
       {v.commit_sha && <FilesSection files={v.files} />}

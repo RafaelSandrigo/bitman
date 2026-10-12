@@ -53,6 +53,20 @@ final class GameVersionFactory extends Factory
         ]);
     }
 
+    /** Já buscada, com violação bloqueante: terminal, o dono reenvia. */
+    public function validationFailed(): static
+    {
+        return $this->awaitingCommitReview()->state(fn (array $attributes) => [
+            'status' => VersionStatus::ValidationFailed,
+            'validation_report' => [
+                'blocked' => true,
+                'violations' => [['code' => 'required_file_missing', 'message' => 'O arquivo obrigatório game.js não existe na raiz do repositório.', 'path' => 'game.js']],
+                'ignored' => [],
+                'ignored_total' => 0,
+            ],
+        ]);
+    }
+
     public function published(): static
     {
         return $this->awaitingCommitReview()->state(fn (array $attributes) => ['status' => VersionStatus::Published]);

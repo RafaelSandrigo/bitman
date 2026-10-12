@@ -52,7 +52,7 @@ export function ImportDecision({ version }: { version: Pick<Version, 'id' | 'rep
             maxLength={1000}
             rows={3}
             error={fieldErrors(reject.error).reason}
-            hint="Obrigatório. Fica registrado na auditoria."
+            hint="Obrigatório. O desenvolvedor vê este motivo, e ele fica registrado na auditoria."
           />
           <div className="flex gap-2">
             <Button type="submit" variant="danger" disabled={pending}>

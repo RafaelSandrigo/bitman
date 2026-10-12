@@ -14,6 +14,7 @@ use App\Modules\Versioning\Domain\QuarantinedFile;
 use App\Modules\Versioning\Domain\VersionFile;
 use App\Modules\Versioning\Domain\VersionStatus;
 use App\Modules\Versioning\Infrastructure\Jobs\FetchRepositoryJob;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Tests\Support\FakeGitSourceFetcher;
@@ -95,15 +96,23 @@ it('registra o commit, o relatório e os arquivos na quarentena (I13)', function
         ->and($entry->context)->toMatchArray(['commit' => Snapshots::COMMIT, 'blocked' => false, 'violations' => 0, 'files' => 3]);
 });
 
-it('com violação, a versão vai ao Portão 1 bloqueada e só os obrigatórios válidos entram na quarentena', function (): void {
+it('com violação, a versão termina em validation_failed, com commit e relatório e nada na quarentena', function (): void {
     useFetcher(FakeGitSourceFetcher::returning(Snapshots::replacing('game.js', Snapshots::entry('game.js', '120000'))));
     $version = import(GameVersion::factory()->fetching()->create());
 
-    expect($version->status)->toBe(VersionStatus::AwaitingCommitReview)
+    expect($version->status)->toBe(VersionStatus::ValidationFailed)
+        ->and($version->status->isInProgress())->toBeFalse()
+        ->and($version->commit_sha)->toBe(Snapshots::COMMIT)
         ->and($version->validation_report['blocked'] ?? null)->toBeTrue()
         ->and(array_column($version->validation_report['violations'] ?? [], 'code'))->toBe(['required_file_not_regular', 'symlink'])
-        ->and($version->files->pluck('path')->all())->toBe(['index.html', 'style.css'])
-        ->and(AuditEntry::sole()->context)->toMatchArray(['blocked' => true, 'violations' => 2, 'files' => 2]);
+        ->and($version->files)->toBeEmpty()
+        ->and(Storage::disk('quarantine')->allFiles())->toBe([])
+        ->and(AuditEntry::sole()->context)->toMatchArray(['blocked' => true, 'violations' => 2, 'files' => 0]);
+});
+
+it('o banco recusa validation_failed sem relatório bloqueado', function (): void {
+    expect(fn () => GameVersion::factory()->awaitingCommitReview()->create(['status' => VersionStatus::ValidationFailed]))
+        ->toThrow(QueryException::class);
 });
 
 it('marca o diff em relação à versão publicada do jogo', function (): void {
@@ -167,7 +176,7 @@ it('só processa versões em busca (idempotente)', function (string $state): voi
     expect(import($version)->status)->toBe($version->status)
         ->and($fetcher->calls)->toBe([])
         ->and(AuditEntry::count())->toBe(0);
-})->with(['fetchFailed', 'awaitingCommitReview']);
+})->with(['fetchFailed', 'validationFailed', 'awaitingCommitReview']);
 
 it('uma falha tardia não desfaz nem apaga uma busca já concluída', function (): void {
     useFetcher(FakeGitSourceFetcher::returning(Snapshots::valid()));
