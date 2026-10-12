@@ -10,6 +10,7 @@ isolados no navegador. Cada jogo tem o seu próprio ranking.
 |---|---|
 | [contexto-do-produto.md](contexto-do-produto.md) | Requisitos originais do produto (fonte da verdade do "o quê") |
 | [plano.md](plano.md) | Roadmap em fases, entregas e critérios de pronto |
+| [melhorias.md](melhorias.md) | Melhorias identificadas pelo caminho, ainda sem fase (backlog) |
 | [arquitetura.md](arquitetura.md) | Containers, módulos, camadas e regras de dependência |
 | [dominio.md](dominio.md) | Linguagem ubíqua, agregados, máquinas de estado e invariantes |
 | [seguranca.md](seguranca.md) | Modelo de ameaças e mitigação de cada uma |

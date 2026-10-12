@@ -94,3 +94,4 @@ Uma entrega está pronta quando:
 3. As regras de autorização e auditoria aplicáveis estão cobertas por teste.
 4. A documentação afetada foi atualizada no mesmo PR, e há um ADR se houve decisão difícil de reverter.
 5. Não há TODO sem issue associada.
+6. Toda melhoria percebida e deixada para depois está registrada em [melhorias.md](melhorias.md).

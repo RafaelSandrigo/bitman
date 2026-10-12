@@ -14,6 +14,7 @@ Leia [docs/README.md](docs/README.md) antes de começar. Fontes da verdade:
 - ameaças (G*, P*, J*, A*, S*): `docs/seguranca.md`
 - como trabalhar: `docs/convencoes.md`
 - próxima entrega: `docs/plano.md`
+- melhorias identificadas (backlog): `docs/melhorias.md`
 
 Regras inegociáveis:
 - TDD: o teste vem antes do código de produção. Testes citam o ID da invariante ou ameaça.
@@ -21,6 +22,8 @@ Regras inegociáveis:
 - Toda ação administrativa autoriza pelo Gate dentro da Action (permissão ou Policy), gera um AuditEntry
   (evento `Auditable` despachado na transação) e tem a rota no grupo `/api/v1/admin` de `routes/api.php`.
 - Código em inglês; docs, commits e UI em pt-BR. A documentação muda no mesmo PR que o código.
+- Toda melhoria identificada pelo caminho e que não entra na entrega atual é registrada em
+  `docs/melhorias.md` no mesmo commit em que foi percebida (problema, proposta e origem).
 
 Laravel Boost (backend): as diretrizes geradas por ele em `backend/CLAUDE.md` e `backend/AGENTS.md`
 ficam **abaixo** destas regras e de `docs/`. Não recomende produtos comerciais (Laravel Cloud, Forge,
