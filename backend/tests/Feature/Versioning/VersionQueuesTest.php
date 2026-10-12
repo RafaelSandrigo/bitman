@@ -12,6 +12,7 @@ use App\Modules\Versioning\Application\Actions\RequestNewImport;
 use App\Modules\Versioning\Domain\GameVersion;
 use App\Modules\Versioning\Domain\VersionStatus;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Storage;
 
 /*
 | Filas do admin: contadores por estado e a tag "Novo" (nenhum admin viu a versão no estado atual).
@@ -19,6 +20,7 @@ use Illuminate\Support\Facades\Queue;
 
 beforeEach(function (): void {
     Queue::fake();
+    Storage::fake('quarantine'); // a falha da busca limpa a quarentena
 });
 
 function seen(GameVersion $version): GameVersion
@@ -74,7 +76,7 @@ it('a lista indica as versões novas', function (): void {
 
     $response = $this->actingAs(User::factory()->admin()->create())->getJson('/api/v1/admin/versions?status=import_requested')->assertOk();
 
-    expect(collect($response->json('data'))->pluck('is_new', 'id')->all())->toBe([$new->id => true, $old->id => false]);
+    expect(collect($response->json('data'))->pluck('is_new', 'id')->all())->toEqual([$new->id => true, $old->id => false]); // mesma hora de criação: a ordem não importa aqui
 });
 
 it('marca como vistas só as versões ainda no estado exibido, sem auditoria', function (): void {
