@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { renderAt } from '../../../test/render'
 import { server } from '../../../test/server'
 import { makeAdmin, sessionHandlers } from '../../../test/session'
-import { makeVersionDetail, makeVersionFile } from '../../../test/versions'
+import { makeVersionDetail, makeVersionFile, queueHandlers } from '../../../test/versions'
 import type { VersionDetail } from '../versions'
 
 function serve(version: VersionDetail) {
@@ -276,5 +276,15 @@ describe('VersionPage', () => {
       expect(screen.getByRole('button', { name: 'Pedir nova importação' })).toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'Ver conteúdo' })).not.toBeInTheDocument()
     })
+  })
+
+  it('abrir uma versão nova a marca como vista', async () => {
+    const version = makeVersionDetail({ is_new: true, status: 'validation_failed' })
+    const queues = queueHandlers()
+    server.use(...queues.handlers)
+    serve(version)
+    renderAt(`/admin/versoes/${version.id}`)
+
+    await waitFor(() => expect(queues.seen).toEqual([{ versions: [{ id: version.id, status: 'validation_failed' }] }]))
   })
 })

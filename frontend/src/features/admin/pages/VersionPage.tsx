@@ -6,6 +6,7 @@ import { formatSize } from '../format'
 import { ImportDecision, NewImportButton } from '../ImportDecision'
 import { RejectWithReason } from '../RejectWithReason'
 import { CommitDecision, FileCard } from '../Review'
+import { useMarkSeen } from '../useMarkSeen'
 import { useRefreshVersions } from '../useRefreshVersions'
 import { getVersion, rejectVersion, versionStatusLabels, type Decision, type Report, type VersionDetail } from '../versions'
 
@@ -107,6 +108,8 @@ export function VersionPage() {
     queryFn: () => getVersion(id),
     refetchInterval: (query) => (query.state.data?.data.status === 'fetching' ? 3000 : false),
   })
+
+  useMarkSeen(version.data ? [version.data.data] : undefined)
 
   if (version.isError) return <Alert tone="error">{errorMessage(version.error)}</Alert>
   if (version.isPending) return <p className="text-slate-400">Carregando…</p>

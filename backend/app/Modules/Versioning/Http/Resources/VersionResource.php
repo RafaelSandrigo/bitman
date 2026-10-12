@@ -24,6 +24,7 @@ class VersionResource extends JsonResource
             'id' => $this->id,
             'number' => $this->number,
             'status' => $this->status->value,
+            'is_new' => $this->status_seen_at === null,
             'repository_url' => $this->repository_url,
             'requested_ref' => $this->requested_ref,
             'commit_sha' => $this->commit_sha,

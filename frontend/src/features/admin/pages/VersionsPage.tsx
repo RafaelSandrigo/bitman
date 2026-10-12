@@ -4,8 +4,10 @@ import { Link, useSearchParams } from 'react-router'
 import { errorMessage } from '../../../shared/api/http'
 import { Alert } from '../../../shared/ui/Alert'
 import { Button } from '../../../shared/ui/Button'
+import { NewTag } from '../../../shared/ui/NewTag'
 import { ImportDecision, NewImportButton } from '../ImportDecision'
-import { listVersions, versionStatusLabels, type Version, type VersionStatus } from '../versions'
+import { useMarkSeen } from '../useMarkSeen'
+import { getVersionSummary, listVersions, versionStatusLabels, type Version, type VersionStatus, type VersionSummary } from '../versions'
 
 /** Filas de trabalho primeiro (portões 0, 1 e 2), depois as versões que pararam. */
 const queues: VersionStatus[] = [
@@ -30,8 +32,11 @@ function VersionCard({ version }: { version: Version }) {
   return (
     <li aria-label={`${version.game.name} — versão ${version.number}`} className="space-y-3 rounded-lg border border-slate-800 bg-slate-900/50 p-4 text-sm">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-base font-semibold">
-          {version.game.name} <span className="text-slate-400">· versão {version.number}</span>
+        <h2 className="flex items-center gap-2 text-base font-semibold">
+          <span>
+            {version.game.name} <span className="text-slate-400">· versão {version.number}</span>
+          </span>
+          {version.is_new && <NewTag />}
         </h2>
         <Link to={`/admin/versoes/${encodeURIComponent(version.id)}`} className="text-emerald-400 hover:underline">
           Detalhes
@@ -87,6 +92,15 @@ function VersionCard({ version }: { version: Version }) {
   )
 }
 
+/** Nome da aba para leitores de tela: "Aguardando autorização: 3 versões, 2 novas". */
+function queueLabel(queue: VersionStatus, summary: VersionSummary | undefined): string {
+  const label = versionStatusLabels[queue]
+  if (!summary) return label
+  const { total, new: unseen } = summary[queue]
+  const count = `${total} ${total === 1 ? 'versão' : 'versões'}`
+  return unseen > 0 ? `${label}: ${count}, ${unseen} ${unseen === 1 ? 'nova' : 'novas'}` : `${label}: ${count}`
+}
+
 /** Filas dos portões e da busca, por ordem de chegada. */
 export function VersionsPage() {
   const [params, setParams] = useSearchParams()
@@ -94,6 +108,12 @@ export function VersionsPage() {
   const status: VersionStatus = isQueue(requested) ? requested : 'import_requested'
   const [page, setPage] = useState(1)
 
+  const summary = useQuery({
+    queryKey: ['admin', 'versions', 'summary'],
+    queryFn: getVersionSummary,
+    // Submissões e buscas chegam sem o admin agir: os contadores se atualizam sozinhos.
+    refetchInterval: 30_000,
+  })
   const versions = useQuery({
     queryKey: ['admin', 'versions', status, page],
     queryFn: () => listVersions(status, page),
@@ -101,6 +121,8 @@ export function VersionsPage() {
     // A busca roda na fila: acompanha até terminar.
     refetchInterval: status === 'fetching' ? 3000 : false,
   })
+
+  useMarkSeen(versions.data?.data)
 
   function selectQueue(queue: VersionStatus) {
     setPage(1)
@@ -122,10 +144,17 @@ export function VersionsPage() {
             type="button"
             role="tab"
             aria-selected={queue === status}
+            aria-label={queueLabel(queue, summary.data)}
             onClick={() => selectQueue(queue)}
             className={`rounded-md px-3 py-1 text-sm ${queue === status ? 'bg-slate-800 font-semibold text-emerald-400' : 'text-slate-300 hover:bg-slate-900'}`}
           >
-            {versionStatusLabels[queue]}
+            <span className="inline-flex items-center gap-1.5">
+              {versionStatusLabels[queue]}
+              {summary.data && (
+                <span className="rounded-full bg-slate-700 px-1.5 text-xs font-normal text-slate-200">{summary.data[queue].total}</span>
+              )}
+              {summary.data && summary.data[queue].new > 0 && <NewTag />}
+            </span>
           </button>
         ))}
       </div>

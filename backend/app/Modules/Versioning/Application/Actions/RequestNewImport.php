@@ -54,13 +54,16 @@ final readonly class RequestNewImport
         }
 
         try {
-            return $this->db->transaction(function () use ($actor, $game): GameVersion {
+            return $this->db->transaction(function () use ($actor, $game, $gate): GameVersion {
                 $version = GameVersion::requestImport(
                     $game->id,
                     RepositoryUrl::fromString($game->repository_url),
                     GitRef::fromString($game->default_ref),
                     $actor->id,
                 );
+                if ($gate->allows(Permission::AuthorizeImports->value)) {
+                    $version->markSeen(); // pedida pelo próprio admin: não é novidade para a fila
+                }
                 $this->publisher->publishFrom($version);
 
                 return $version;

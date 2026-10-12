@@ -63,6 +63,7 @@ use LogicException;
  * @property string|null $rejected_by_id
  * @property CarbonImmutable|null $rejected_at
  * @property string|null $rejection_reason
+ * @property CarbonImmutable|null $status_seen_at quando um admin viu a versão no estado atual (null = "nova")
  * @property CarbonImmutable $created_at
  * @property CarbonImmutable $updated_at
  * @property-read Game $game
@@ -88,7 +89,7 @@ final class GameVersion extends Model implements EmitsDomainEvents
         $version->repository_url = $repositoryUrl->value;
         $version->requested_ref = $ref->value;
         $version->requested_by_id = $requestedById;
-        $version->status = VersionStatus::ImportRequested;
+        $version->moveTo(VersionStatus::ImportRequested, null);
         $version->save();
 
         $version->recordEvent(new ImportRequested($version->id, $gameId, $version->number, $repositoryUrl, $ref, $requestedById));
@@ -101,7 +102,7 @@ final class GameVersion extends Model implements EmitsDomainEvents
     {
         $this->ensureStatus(VersionStatus::ImportRequested, 'ter a importação autorizada');
 
-        $this->status = VersionStatus::Fetching;
+        $this->moveTo(VersionStatus::Fetching, $actor);
         $this->import_decided_by_id = $actor->id;
         $this->import_decided_at = CarbonImmutable::now();
         $this->save();
@@ -114,7 +115,7 @@ final class GameVersion extends Model implements EmitsDomainEvents
     {
         $this->ensureStatus(VersionStatus::ImportRequested, 'ter a importação rejeitada');
 
-        $this->status = VersionStatus::ImportRejected;
+        $this->moveTo(VersionStatus::ImportRejected, $actor);
         $this->import_decided_by_id = $actor->id;
         $this->import_decided_at = CarbonImmutable::now();
         $this->import_rejection_reason = $reason->value;
@@ -137,7 +138,7 @@ final class GameVersion extends Model implements EmitsDomainEvents
             throw new LogicException('Versão bloqueada pela política não tem arquivos candidatos.');
         }
 
-        $this->status = $report->isBlocked() ? VersionStatus::ValidationFailed : VersionStatus::AwaitingCommitReview;
+        $this->moveTo($report->isBlocked() ? VersionStatus::ValidationFailed : VersionStatus::AwaitingCommitReview, null);
         $this->commit_sha = $commit->value;
         $this->validation_report = $report->toArray();
         $this->fetched_at = CarbonImmutable::now();
@@ -154,7 +155,7 @@ final class GameVersion extends Model implements EmitsDomainEvents
     {
         $this->ensureStatus(VersionStatus::Fetching, 'falhar a busca');
 
-        $this->status = VersionStatus::FetchFailed;
+        $this->moveTo(VersionStatus::FetchFailed, null);
         $this->fetch_failure = $failure->value;
         $this->fetched_at = CarbonImmutable::now();
         $this->save();
@@ -170,7 +171,7 @@ final class GameVersion extends Model implements EmitsDomainEvents
             throw new CommitHasBlockingViolations;
         }
 
-        $this->status = VersionStatus::AwaitingFileReview;
+        $this->moveTo(VersionStatus::AwaitingFileReview, $actor);
         $this->commit_decided_by_id = $actor->id;
         $this->commit_decided_at = CarbonImmutable::now();
         $this->save();
@@ -183,7 +184,7 @@ final class GameVersion extends Model implements EmitsDomainEvents
     {
         $this->ensureStatus(VersionStatus::AwaitingCommitReview, 'ter o commit rejeitado');
 
-        $this->status = VersionStatus::CommitRejected;
+        $this->moveTo(VersionStatus::CommitRejected, $actor);
         $this->commit_decided_by_id = $actor->id;
         $this->commit_decided_at = CarbonImmutable::now();
         $this->commit_rejection_reason = $reason->value;
@@ -276,9 +277,31 @@ final class GameVersion extends Model implements EmitsDomainEvents
         return $this->hasMany(VersionFile::class)->orderBy('path');
     }
 
+    /**
+     * Um admin viu a versão no estado atual (fila ou detalhe): ela deixa de ser "nova".
+     * Não é decisão de portão, então não gera auditoria.
+     */
+    public function markSeen(): void
+    {
+        if ($this->status_seen_at === null) {
+            $this->status_seen_at = CarbonImmutable::now();
+            $this->save();
+        }
+    }
+
+    /**
+     * Toda transição passa por aqui. Mudança feita por um admin já nasce vista; a do sistema
+     * ou do dono (submissão, reenvio, fim da busca) fica "nova" até um admin ver.
+     */
+    private function moveTo(VersionStatus $status, ?User $admin): void
+    {
+        $this->status = $status;
+        $this->status_seen_at = $admin === null ? null : CarbonImmutable::now();
+    }
+
     private function reject(User $actor, string $reason): void
     {
-        $this->status = VersionStatus::Rejected;
+        $this->moveTo(VersionStatus::Rejected, $actor);
         $this->rejected_by_id = $actor->id;
         $this->rejected_at = CarbonImmutable::now();
         $this->rejection_reason = $reason;
@@ -312,6 +335,7 @@ final class GameVersion extends Model implements EmitsDomainEvents
             'fetched_at' => 'immutable_datetime',
             'commit_decided_at' => 'immutable_datetime',
             'rejected_at' => 'immutable_datetime',
+            'status_seen_at' => 'immutable_datetime',
             'created_at' => 'immutable_datetime',
             'updated_at' => 'immutable_datetime',
         ];

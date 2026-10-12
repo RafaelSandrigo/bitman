@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { apiGet, apiSend } from '../../shared/api/http'
+import { apiGet, apiSend, NoContent } from '../../shared/api/http'
 
 export const versionStatuses = [
   'import_requested',
@@ -38,6 +38,8 @@ export const VersionSchema = z.object({
   id: z.string(),
   number: z.number().int().positive(),
   status: z.enum(versionStatuses),
+  /** Nenhum admin viu a versão no estado atual. */
+  is_new: z.boolean(),
   repository_url: z.string().startsWith('https://'),
   requested_ref: z.string(),
   commit_sha: Sha.nullable(),
@@ -163,4 +165,19 @@ export async function getFileContent(versionId: string, fileId: string) {
 export function reviewFile(versionId: string, fileId: string, decision: { decision: 'approved' | 'rejected'; sha256: string; reason?: string }) {
   const path = `/api/v1/admin/versions/${encodeURIComponent(versionId)}/files/${encodeURIComponent(fileId)}/review`
   return apiSend('POST', path, VersionEnvelope, decision)
+}
+
+const SummarySchema = z.object({
+  data: z.record(z.enum(versionStatuses), z.object({ total: z.number().int().nonnegative(), new: z.number().int().nonnegative() })),
+})
+export type VersionSummary = z.infer<typeof SummarySchema>['data']
+
+/** Contadores das filas: total e novos por estado. */
+export async function getVersionSummary() {
+  return (await apiGet('/api/v1/admin/versions/summary', SummarySchema)).data
+}
+
+/** O admin viu estas versões no estado exibido: deixam de ser "novas". */
+export function markVersionsSeen(versions: Pick<Version, 'id' | 'status'>[]) {
+  return apiSend('POST', '/api/v1/admin/versions/seen', NoContent, { versions: versions.map(({ id, status }) => ({ id, status })) })
 }

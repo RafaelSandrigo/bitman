@@ -104,6 +104,7 @@ um servidor HTTPS falso dentro da allowlist).
 - ✅ `file_reviews` append-only (trigger no banco); histórico por arquivo e decisões de cada portão no detalhe da versão.
 - ✅ Admin › **Versões** (antes "Importações"): filas dos três portões e das versões que pararam. O dono vê o motivo
   da rejeição em qualquer portão e pode reenviar.
+- ✅ Abas de Versões com o total de cada estado e a tag **Novo** quando há versão que nenhum admin viu no estado atual.
 
 **Aceite:** ✅ a rejeição de um arquivo obrigatório rejeita a versão (`ReviewGatesTest`). ✅ A auditoria
 responde "quem aprovou qual hash, quando": `versioning.file-approved` com ator, data, `path` e `sha256`.

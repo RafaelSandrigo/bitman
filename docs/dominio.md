@@ -119,6 +119,12 @@ mensagem da falha da busca —, nunca quem decidiu nem a lista de arquivos ignor
 `awaiting_commit_review`, `awaiting_file_review`), garantido por índice parcial no banco.
 A partir de `awaiting_commit_review`, `commit_sha` e o relatório são obrigatórios (`CHECK`, I13).
 
+**"Novo" nas filas do admin** (`status_seen_at`): toda transição passa por `moveTo()`. A feita por um
+admin já nasce vista; a do sistema ou do dono (submissão, reenvio, fim da busca) fica nova até algum
+admin exibir a versão (na fila ou no detalhe), desde que ela ainda esteja no estado exibido. Marcar
+como vista é leitura, não decisão de portão: não gera `AuditEntry`. As abas mostram, por estado, o
+total e se há novas (`GET /api/v1/admin/versions/summary`).
+
 ### VersionFile e decisões de arquivo
 
 - Campos: `path` (um dos paths permitidos), `sha256`, `size`, `gitBlobSha`,

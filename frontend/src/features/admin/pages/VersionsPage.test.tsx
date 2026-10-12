@@ -1,10 +1,10 @@
-import { screen, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
 import { renderAt } from '../../../test/render'
 import { server } from '../../../test/server'
 import { makeAdmin, sessionHandlers } from '../../../test/session'
-import { makeVersion } from '../../../test/versions'
+import { makeVersion, queueHandlers } from '../../../test/versions'
 import type { Version } from '../versions'
 
 function page(versions: Version[]) {
@@ -18,6 +18,7 @@ describe('VersionsPage', () => {
     let authorized = false
     server.use(
       ...sessionHandlers(makeAdmin()).handlers,
+      ...queueHandlers().handlers,
       http.get('/api/v1/admin/versions', ({ request }) => {
         statuses.push(new URL(request.url).searchParams.get('status'))
         return HttpResponse.json(page(authorized ? [] : [version]))
@@ -46,6 +47,7 @@ describe('VersionsPage', () => {
     const bodies: unknown[] = []
     server.use(
       ...sessionHandlers(makeAdmin()).handlers,
+      ...queueHandlers().handlers,
       http.get('/api/v1/admin/versions', () => HttpResponse.json(page([version]))),
       http.post(`/api/v1/admin/versions/${version.id}/reject-import`, async ({ request }) => {
         bodies.push(await request.json())
@@ -70,6 +72,7 @@ describe('VersionsPage', () => {
     let created = false
     server.use(
       ...sessionHandlers(makeAdmin()).handlers,
+      ...queueHandlers().handlers,
       http.get('/api/v1/admin/versions', ({ request }) =>
         HttpResponse.json(page(new URL(request.url).searchParams.get('status') === 'fetch_failed' ? [version] : [])),
       ),
@@ -81,7 +84,7 @@ describe('VersionsPage', () => {
     )
     const { user, router } = renderAt('/admin/versoes')
 
-    await user.click(await screen.findByRole('tab', { name: 'Busca falhou' }))
+    await user.click(await screen.findByRole('tab', { name: /^Busca falhou/ }))
     expect(router.state.location.search).toBe('?estado=fetch_failed')
     expect(await screen.findByText('A branch ou tag não existe no repositório.')).toBeInTheDocument()
 
@@ -95,19 +98,21 @@ describe('VersionsPage', () => {
     const version = makeVersion({ status: 'awaiting_commit_review', commit_sha: 'a'.repeat(40), blocked: false })
     server.use(
       ...sessionHandlers(makeAdmin()).handlers,
+      ...queueHandlers().handlers,
       http.get('/api/v1/admin/versions', ({ request }) =>
         HttpResponse.json(page(new URL(request.url).searchParams.get('status') === 'awaiting_commit_review' ? [version] : [])),
       ),
     )
     const { user } = renderAt('/admin/versoes')
 
-    await user.click(await screen.findByRole('tab', { name: 'Aguardando revisão do commit' }))
+    await user.click(await screen.findByRole('tab', { name: /^Aguardando revisão do commit/ }))
 
     expect(await screen.findByRole('link', { name: 'Revisar commit (Portão 1) →' })).toHaveAttribute('href', `/admin/versoes/${version.id}`)
   })
 
   it('o endereço antigo das importações leva às versões', async () => {
-    server.use(...sessionHandlers(makeAdmin()).handlers, http.get('/api/v1/admin/versions', () => HttpResponse.json(page([]))))
+    server.use(...sessionHandlers(makeAdmin()).handlers,
+      ...queueHandlers().handlers, http.get('/api/v1/admin/versions', () => HttpResponse.json(page([]))))
     const { router } = renderAt('/admin/importacoes')
 
     expect(await screen.findByRole('heading', { name: 'Versões' })).toBeInTheDocument()
@@ -115,12 +120,40 @@ describe('VersionsPage', () => {
   })
 
   it('o menu da administração leva às versões', async () => {
-    server.use(...sessionHandlers(makeAdmin()).handlers, http.get('/api/v1/admin/submissions', () => HttpResponse.json({ data: [], meta: { current_page: 1, last_page: 1, total: 0 } })), http.get('/api/v1/admin/versions', () => HttpResponse.json(page([]))))
+    server.use(...sessionHandlers(makeAdmin()).handlers,
+      ...queueHandlers().handlers, http.get('/api/v1/admin/submissions', () => HttpResponse.json({ data: [], meta: { current_page: 1, last_page: 1, total: 0 } })), http.get('/api/v1/admin/versions', () => HttpResponse.json(page([]))))
     const { user, router } = renderAt('/admin')
 
     await user.click(await screen.findByRole('link', { name: 'Versões' }))
 
     expect(router.state.location.pathname).toBe('/admin/versoes')
     expect(await screen.findByRole('heading', { name: 'Versões' })).toBeInTheDocument()
+  })
+
+  it('mostra o total de cada fila e a tag Novo nas filas com versões que nenhum admin viu', async () => {
+    const queues = queueHandlers({ import_requested: { total: 3, new: 2 }, fetch_failed: { total: 1, new: 0 } })
+    server.use(...sessionHandlers(makeAdmin()).handlers, ...queues.handlers, http.get('/api/v1/admin/versions', () => HttpResponse.json(page([]))))
+    renderAt('/admin/versoes')
+
+    const requested = await screen.findByRole('tab', { name: 'Aguardando autorização: 3 versões, 2 novas' })
+    expect(within(requested).getByText('Novo')).toBeInTheDocument()
+    expect(within(requested).getByText('3')).toBeInTheDocument()
+    const failed = screen.getByRole('tab', { name: 'Busca falhou: 1 versão' })
+    expect(within(failed).queryByText('Novo')).not.toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Rejeitada: 0 versões' })).toBeInTheDocument()
+  })
+
+  it('marca a versão nova como vista ao exibi-la, mantendo a tag na tela', async () => {
+    const fresh = makeVersion({ is_new: true })
+    const old = makeVersion({ game: { id: 'g2', name: 'Tetris', slug: 'tetris' } })
+    const queues = queueHandlers({ import_requested: { total: 2, new: 1 } })
+    server.use(...sessionHandlers(makeAdmin()).handlers, ...queues.handlers, http.get('/api/v1/admin/versions', () => HttpResponse.json(page([fresh, old]))))
+    renderAt('/admin/versoes')
+
+    const item = await screen.findByRole('listitem', { name: 'Snake — versão 1' })
+    expect(within(item).getByText('Novo')).toBeInTheDocument()
+    expect(within(screen.getByRole('listitem', { name: 'Tetris — versão 1' })).queryByText('Novo')).not.toBeInTheDocument()
+    await waitFor(() => expect(queues.seen).toEqual([{ versions: [{ id: fresh.id, status: 'import_requested' }] }]))
+    expect(within(item).getByText('Novo')).toBeInTheDocument()
   })
 })

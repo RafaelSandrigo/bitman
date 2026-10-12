@@ -1,4 +1,5 @@
-import type { Version, VersionDetail, VersionFile } from '../features/admin/versions'
+import { http, HttpResponse } from 'msw'
+import { versionStatuses, type Version, type VersionDetail, type VersionFile, type VersionSummary } from '../features/admin/versions'
 import type { MyVersion } from '../features/submissions/api'
 import { ulid } from './session'
 
@@ -7,6 +8,7 @@ export function makeVersion(overrides: Partial<Version> = {}): Version {
     id: ulid(),
     number: 1,
     status: 'import_requested',
+    is_new: false,
     repository_url: 'https://github.com/ada/snake',
     requested_ref: 'main',
     commit_sha: null,
@@ -62,5 +64,21 @@ export function makeVersionFile(overrides: Partial<VersionFile> = {}): VersionFi
     reviews: [],
     previous_approval: null,
     ...overrides,
+  }
+}
+
+/** Contadores das filas (todos zerados, salvo os informados) e o registro das marcações de "visto". */
+export function queueHandlers(counts: Partial<VersionSummary> = {}) {
+  const seen: unknown[] = []
+  const summary = Object.fromEntries(versionStatuses.map((status) => [status, counts[status] ?? { total: 0, new: 0 }]))
+  return {
+    seen,
+    handlers: [
+      http.get('/api/v1/admin/versions/summary', () => HttpResponse.json({ data: summary })),
+      http.post('/api/v1/admin/versions/seen', async ({ request }) => {
+        seen.push(await request.json())
+        return new HttpResponse(null, { status: 204 })
+      }),
+    ],
   }
 }
