@@ -13,8 +13,8 @@ NODE    := $(COMPOSE) run --rm -T --no-deps -e NPM_CONFIG_UPDATE_NOTIFIER=false 
 help: ## Lista os comandos
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-12s %s\n", $$1, $$2}'
 
-init: ## Primeira instalação: cria os diretórios dos volumes e instala as dependências
-	$(COMPOSE) run --rm --no-deps -T --entrypoint sh app -c 'mkdir -p /var/bitman/artifacts/served /var/bitman/artifacts/archive /var/bitman/quarantine && chmod 755 /var/bitman/artifacts /var/bitman/artifacts/served /var/bitman/artifacts/archive'
+init: ## Primeira instalação: cria os diretórios dos volumes (dono www-data) e instala as dependências
+	$(COMPOSE) run --rm --no-deps -T --entrypoint sh app -c 'mkdir -p /var/bitman/artifacts/served /var/bitman/artifacts/archive /var/bitman/quarantine && chown -R www-data:www-data /var/bitman/artifacts /var/bitman/quarantine && chmod 755 /var/bitman/artifacts /var/bitman/artifacts/served /var/bitman/artifacts/archive'
 	$(COMPOSE) run --rm --no-deps -T app composer install
 	$(NODE) npm ci
 
@@ -60,9 +60,10 @@ test-back: ## Testes do backend (banco bitman_test)
 test-front: ## Testes do frontend
 	$(NODE) npm test
 
-test-infra: ## Testes de infraestrutura (headers da origem de jogos e das thumbnails, egress da sandbox)
+test-infra: ## Testes de infraestrutura (origem de jogos, thumbnails, fixtures e egress da sandbox)
 	sh tests/infra/games-origin.sh
 	sh tests/infra/hub-media.sh
+	sh tests/infra/sandbox-fixtures.sh
 	sh tests/infra/sandbox-egress.sh
 
 lint: ## Pint (checagem) + oxlint + typecheck

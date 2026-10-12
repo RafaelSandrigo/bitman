@@ -12,7 +12,7 @@ Status: ⬜ não iniciada · 🟨 em andamento · ✅ concluída
 
 - ✅ Laravel Boost instalado com proteções contra recomendações comerciais ([ADR 0009](adr/0009-laravel-boost-restrito.md)).
 - ✅ `docker-compose.yml` único (`name: bitman`) com `bitman-web`, `bitman-games`, `app`, `queue`, `scheduler`,
-  `frontend`, `postgres`, `redis`, `git-sandbox` (stub) e `egress-proxy`; redes `internal`, `egress` e `sandbox`;
+  `frontend`, `postgres`, `redis`, `git-sandbox` (stub até a Fase 3) e `egress-proxy`; redes `internal`, `egress` e `sandbox`;
   limites de recursos; healthchecks; labels do Traefik com autenticação básica (pré-lançamento).
 - ✅ Imagem PHP 8.5 (intl, pdo_pgsql, redis, pcntl, zip, bcmath, opcache) com Composer.
 - ✅ nginx do hub (SPA + API na mesma origem, CSP, IP real) e da origem de jogos (CSP `sandbox`, `no-store, no-transform`, allowlist de arquivos).
@@ -65,19 +65,29 @@ Status: ⬜ não iniciada · 🟨 em andamento · ✅ concluída
 **Aceite:** ✅ uma URL inválida, de host fora da allowlist ou com credenciais é rejeitada na submissão, sem criar nada.
 ✅ Nenhuma chamada de rede nem job ocorre (I2): `SubmitGameTest` com `Http::assertNothingSent()` e `Queue::assertNothingPushed()`.
 
-## Fase 3 — Ingestão segura (Portão 0) ⬜
+## Fase 3 — Ingestão segura (Portão 0) ✅
 
-- Serviço `git-sandbox`: `ls-remote` + `fetch --depth=1` em repositório bare, leitura
-  da árvore e dos blobs sem checkout, com todos os endurecimentos G1–G8.
-- Porta `GitSourceFetcher` + adaptador HTTP + `FakeGitSourceFetcher`.
-- `RepositoryPolicy` com as regras de [dominio.md](dominio.md#política-de-repositório-mvp) (TDD, uma regra por classe).
-- Admin: autorizar ou rejeitar a importação (Portão 0) → `FetchRepositoryJob` →
-  quarentena → `ValidationReport` → diff com a versão publicada.
-- Repositórios-fixture maliciosos (symlink, submodule, arquivo gigante, nomes
-  hostis, executável, redirect) nos testes de integração.
+- ✅ Serviço `git-sandbox` (`docker/git-sandbox`): `POST /fetch` autenticado por token (G8), clone **bare** raso
+  (`--depth=1 --no-tags --single-branch --filter=blob:limit=<max>`), árvore lida com `ls-tree` e blobs com `cat-file`,
+  sem checkout, com G1–G8. Uma única busca resolve o commit (o `ls-remote` separado do plano original virou redundante).
+  Só devolve códigos de erro: a saída do git traz texto do servidor remoto, que é hostil.
+- ✅ Porta `GitSourceFetcher` + `HttpGitSourceFetcher` (resposta tratada como hostil: teto de tamanho, JSON estrito,
+  paths em base64, só os blobs pedidos e cada blob conferido contra o objeto Git da árvore) + `FakeGitSourceFetcher`.
+- ✅ `RepositoryPolicy` com as 8 regras de [dominio.md](dominio.md#política-de-repositório-mvp), uma classe cada (TDD).
+- ✅ Admin › Importações: autorizar ou rejeitar (com motivo) no Portão 0 → `FetchRepositoryJob` (fila `ingestion`) →
+  quarentena (`{versionId}/{sha256}`) → `ValidationReport` → diff com a versão publicada → `awaiting_commit_review`.
+  Detalhe da versão com o relatório, os arquivos e os ignorados. Nova importação depois de falha ou rejeição.
+- ✅ Repositórios-fixture (`tests/sandbox`): válido, tag, symlink (obrigatório e extra), submodule, executável, arquivo
+  gigante, binário, nomes hostis, árvores forjadas com `..` e `.git`, árvore grande e acima do teto, sem obrigatórios e
+  commit vazio. Gerados e buscados pela imagem real da sandbox, sem rede; o manifesto de cada um é um golden versionado.
+- ✅ O worker da fila e o scheduler rodam como `www-data` (processam conteúdo hostil); os volumes `quarantine` e
+  `artifacts` passaram a ter dono `www-data`.
 
-**Aceite:** todas as fixtures maliciosas resultam em violação bloqueante ou
-`fetch_failed`, nunca em erro não tratado. O commit fica registrado.
+**Aceite:** ✅ toda fixture maliciosa termina em violação bloqueante ou `fetch_failed`, nunca em erro não tratado
+(`SandboxFixturesTest`, sobre os manifestos que a sandbox real gerou; `tests/infra/sandbox-fixtures.sh` confere o golden).
+✅ O commit fica registrado (`commit_sha` + auditoria `versioning.repository-fetched`; `CHECK` no banco a partir do Portão 1).
+Redirect: `http.followRedirects=false` e o código `redirected` são testados, mas não há fixture de redirect real (exigiria
+um servidor HTTPS falso dentro da allowlist).
 
 ## Fase 4 — Revisão (Portões 1 e 2) ⬜
 
@@ -95,8 +105,7 @@ responde "quem aprovou qual hash, quando".
 - `PublishVersion` (I6–I8): verifica os hashes, grava o `archive` write-once, cria
   `served/{publicId}` e marca a versão anterior como `superseded`. Arquivos com `0644` e diretórios
   com `0755`: o worker do nginx `bitman-games` precisa conseguir lê-los (descoberto no teste de infra da Fase 0).
-  Os volumes `quarantine` e `artifacts` foram criados com dono `root`, mas o php-fpm roda como `www-data`: acertar o
-  dono antes de gravar neles (o volume `media` já nasce com `www-data`, pela imagem; descoberto na Fase 2).
+  Os volumes `quarantine` e `artifacts` já têm dono `www-data` (acertado na Fase 3; `make init` faz o mesmo numa instalação nova).
 - Retirar versão e bloquear/desbloquear jogo (J6).
 - nginx `games` com CSP e headers (J1–J3) e testes de headers.
 - Página inicial pública (cards de jogos publicados) e página `/games/{slug}` com o
@@ -177,6 +186,6 @@ Ações que dependem de acesso ou de decisão externa. Nenhuma bloqueia o iníci
 
 | Pendência | Necessária até |
 |---|---|
-| Virar admin (a conta já existe e o e-mail está confirmado): `make artisan c="user:grant-role seu@email admin"` | Fase 3 |
+| Virar admin (a conta já existe e o e-mail está confirmado): `make artisan c="user:grant-role seu@email admin"` | Para usar o Portão 0 (Fase 3) |
 | Service Token do Cloudflare Access, `X-Deploy-Token` e aprovação do hash do `deploy-bitman.sh` | Fase 8 |
 | Garantir que nenhum sistema em `*.sandrigo.com.br` emita cookies com `Domain=.sandrigo.com.br` | Fase 8 |

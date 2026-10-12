@@ -1,7 +1,7 @@
 #!/bin/sh
 # Teste do isolamento de rede da git-sandbox (docs/seguranca.md G3, ADR 0003).
 # A sandbox só alcança a internet pelo egress-proxy, e só os hosts da allowlist.
-# Requer a stack de pé (make up).
+# Requer a stack de pé (make up). No CI só sobem sandbox e proxy: as checagens de app/queue pulam.
 set -eu
 cd "$(dirname "$0")/../.."
 FAILURES=0
@@ -24,6 +24,19 @@ if run "php -r 'exit(@fsockopen(\"postgres\", 5432, \$e, \$s, 3) ? 0 : 1);'"; th
 
 # Negado: o proxy não abre CONNECT para portas diferentes de 443.
 if run "php -r '\$f=@fsockopen(\"egress-proxy\",8888,\$e,\$s,3); fwrite(\$f,\"CONNECT github.com:22 HTTP/1.1\r\nHost: github.com:22\r\n\r\n\"); \$l=fgets(\$f); exit(str_contains((string)\$l,\" 200 \") ? 0 : 1);'"; then fail "proxy permitiu CONNECT na porta 22"; else ok "CONNECT só na 443"; fi
+
+# G8: sem o token certo, a sandbox não busca nada (e sem token configurado, recusa todos).
+fetch_status() { docker compose exec -T git-sandbox php -r '$c=stream_context_create(["http"=>["method"=>"POST","header"=>"Content-Type: application/json\r\nAuthorization: Bearer '"$1"'","content"=>"{}","ignore_errors"=>true]]); @file_get_contents("http://127.0.0.1:8080/fetch",false,$c); echo explode(" ",$http_response_header[0] ?? "x 0")[1];'; }
+if [ "$(fetch_status token-errado)" = "401" ]; then ok "token errado recebe 401"; else fail "token errado deveria receber 401"; fi
+if [ "$(fetch_status '')" = "401" ]; then ok "sem token recebe 401"; else fail "sem token deveria receber 401"; fi
+
+# Só o worker da fila (rede sandbox) fala com a sandbox; o php-fpm não.
+if docker compose ps --status running --services | grep -qx queue; then
+    if docker compose exec -T app php -r 'exit(@fsockopen("git-sandbox", 8080, $e, $s, 3) ? 0 : 1);' >/dev/null 2>&1; then fail "app alcançou a git-sandbox"; else ok "app não alcança a git-sandbox"; fi
+    if docker compose exec -T queue php -r 'exit(@fsockopen("git-sandbox", 8080, $e, $s, 3) ? 0 : 1);' >/dev/null 2>&1; then ok "queue alcança a git-sandbox"; else fail "queue deveria alcançar a git-sandbox"; fi
+else
+    echo "skip app/queue não estão de pé (CI)"
+fi
 
 # Hardening do container.
 if run "touch /srv/sandbox/x"; then fail "rootfs deveria ser somente leitura"; else ok "rootfs somente leitura"; fi

@@ -17,9 +17,20 @@ arch('value objects e DTOs são readonly')
     ->expect([
         'App\Shared\Domain\Git\RepositoryUrl',
         'App\Shared\Domain\Git\GitRef',
+        'App\Shared\Domain\Git\CommitSha',
         'App\Modules\Catalog\Domain\Slug',
         'App\Modules\Catalog\Application\SubmitGameInput',
         'App\Modules\Audit\Domain\AuditRecord',
+        'App\Modules\Ingestion\Domain\TreeEntry',
+        'App\Modules\Ingestion\Domain\RepositorySnapshot',
+        'App\Modules\Ingestion\Domain\PolicyLimits',
+        'App\Modules\Ingestion\Domain\Violation',
+        'App\Modules\Ingestion\Domain\IgnoredFile',
+        'App\Modules\Ingestion\Domain\ValidationReport',
+        'App\Modules\Ingestion\Domain\RepositoryPolicy',
+        'App\Modules\Ingestion\Domain\Rules',
+        'App\Modules\Versioning\Domain\DecisionReason',
+        'App\Modules\Versioning\Domain\QuarantinedFile',
     ])
     ->toBeReadonly();
 

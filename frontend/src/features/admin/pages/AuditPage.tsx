@@ -12,6 +12,10 @@ const actionLabels: Record<string, string> = {
   'catalog.game-submitted': 'Jogo submetido',
   'catalog.slug-changed': 'Slug alterado',
   'versioning.import-requested': 'Importação solicitada',
+  'versioning.import-authorized': 'Importação autorizada (Portão 0)',
+  'versioning.import-rejected': 'Importação rejeitada (Portão 0)',
+  'versioning.repository-fetched': 'Repositório buscado',
+  'versioning.fetch-failed': 'Busca do repositório falhou',
 }
 
 const dateFormat = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'medium' })

@@ -13,6 +13,8 @@ enum Permission: string
     case SubmitGames = 'games.submit';
     /** Fila de submissões e ajustes do catálogo (slug). */
     case ManageGames = 'games.manage';
+    /** Portão 0: autorizar ou rejeitar o acesso ao repositório, pedir nova importação e ver as versões. */
+    case AuthorizeImports = 'versions.authorize-import';
     case ManageRoles = 'users.manage-roles';
     case ViewAudit = 'audit.view';
 }

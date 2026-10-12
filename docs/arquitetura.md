@@ -99,12 +99,12 @@ outra origem, e esse host só serve jogos publicados, em caminhos UUID não adiv
 | `bitman-web` | nginx: serve `frontend/dist` e as thumbnails (`/media/thumbnails`, volume `media` somente leitura) e encaminha `/api`, `/sanctum` e `/up` para o php-fpm | prod-network, internal | SPA e API na **mesma origem** (cookies Sanctum sem CORS). CSP do hub e IP real via `CF-Connecting-IP` |
 | `bitman-games` | nginx estático da origem de jogos | prod-network | Monta o subdiretório `served` do volume de artefatos, somente leitura. Só serve `/{uuid}/{index.html,style.css,game.js}`; o resto é 404 |
 | `app` | Laravel (php-fpm 8.5) | internal, egress | Imagem `bitman-php` (construída só por este serviço) |
-| `queue` | `queue:work` (filas `ingestion` e `default`) | internal, egress, sandbox | É o único que fala com a sandbox |
-| `scheduler` | `schedule:work` | internal, egress | — |
+| `queue` | `queue:work` (filas `ingestion` e `default`) | internal, egress, sandbox | É o único que fala com a sandbox. Roda como `www-data` |
+| `scheduler` | `schedule:work` | internal, egress | Roda como `www-data` |
 | `frontend` | `vite build --watch` (pré-lançamento) | egress | `node_modules` em volume próprio (binários da imagem alpine) |
 | `postgres` | PostgreSQL 17 (bancos `bitman` e `bitman_test`) | internal | — |
 | `redis` | Redis 8.2 com senha: fila, cache, sessão e rate limit | internal | — |
-| `git-sandbox` | Busca repositórios e devolve um manifesto (stub até a Fase 3) | sandbox | Usuário não-root, rootfs read-only, `tmpfs` de 256 MB, `cap_drop: ALL`, `no-new-privileges`, limites de CPU, memória e pids |
+| `git-sandbox` | `POST /fetch` (token): clone bare raso e manifesto (commit, árvore, blobs pedidos) | sandbox | Usuário não-root, rootfs read-only, `tmpfs` de 256 MB, `cap_drop: ALL`, `no-new-privileges`, limites de CPU, memória e pids |
 | `egress-proxy` | tinyproxy: só `CONNECT` na 443 para `github.com`, `gitlab.com` e `codeberg.org` | sandbox, egress | O único caminho da sandbox para a internet. Bloqueia a LAN e os outros projetos |
 
 Os containers ficam com os nomes `bitman-<serviço>-1`. As redes do projeto são `internal` (`internal: true`: banco e
@@ -179,8 +179,12 @@ Http ──► Application ──► Domain ◄── Infrastructure
 - Os e-mails saem pela fila `default`, com links para as rotas da SPA (`/verificar-email?link=…`, `/redefinir-senha?token=…`).
 - Catálogo: `POST /api/v1/games` (submissão, multipart, `games.submit`) e `GET /api/v1/me/games`; no admin,
   `GET /api/v1/admin/submissions` e `PATCH /api/v1/admin/games/{id}/slug` (`games.manage`).
+- Versões (Fase 3, `versions.authorize-import`): `GET /api/v1/admin/versions?status=`, `GET /api/v1/admin/versions/{id}`,
+  `POST …/versions/{id}/authorize-import`, `POST …/versions/{id}/reject-import` (`reason`) e `POST /api/v1/admin/games/{id}/versions`
+  (nova importação; no máximo uma versão em andamento por jogo, garantida por índice parcial).
 - Comunicação entre módulos: o Versioning escuta `Catalog\Domain\Events\GameSubmitted` (listener síncrono, mesma transação)
-  para criar a versão 1. Nenhum módulo altera tabelas de outro.
+  para criar a versão 1. `ImportAuthorized` enfileira o `FetchRepositoryJob` depois do commit. O Versioning usa do Ingestion só o
+  Domain (`GitSourceFetcher`, `RepositoryPolicy`, `ValidationReport`). Nenhum módulo altera tabelas de outro.
 
 ## Fluxos principais
 
@@ -198,8 +202,8 @@ sequenceDiagram
     API->>API: Policy + transição import_requested → fetching + AuditEntry
     API->>Q: FetchRepositoryJob(versionId)
     Q->>S: POST /fetch {url, ref} (já validados pelos value objects)
-    S->>G: git ls-remote / fetch --depth=1 (somente HTTPS, sem redirects)
-    S-->>Q: manifesto: commitSha, árvore (path, modo, tamanho), blobs permitidos
+    S->>G: git clone --bare --depth=1 --filter=blob:limit (somente HTTPS, sem redirects)
+    S-->>Q: manifesto: commitSha, árvore (path, modo, tamanho), blobs permitidos (ou só um código de erro)
     Q->>Q: Revalida tudo (zero trust também na sandbox): RepositoryPolicy → ValidationReport
     Q->>Q: Grava blobs na quarentena; calcula SHA-256; diff com a versão publicada
     Q->>API: transição fetching → awaiting_commit_review

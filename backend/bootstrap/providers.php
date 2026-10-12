@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Modules\Audit\Infrastructure\AuditServiceProvider;
 use App\Modules\Catalog\Infrastructure\CatalogServiceProvider;
 use App\Modules\Identity\Infrastructure\IdentityServiceProvider;
+use App\Modules\Ingestion\Infrastructure\IngestionServiceProvider;
 use App\Modules\Versioning\Infrastructure\VersioningServiceProvider;
 use App\Providers\AppServiceProvider;
 
@@ -13,5 +14,6 @@ return [
     AuditServiceProvider::class,
     CatalogServiceProvider::class,
     IdentityServiceProvider::class,
+    IngestionServiceProvider::class,
     VersioningServiceProvider::class,
 ];

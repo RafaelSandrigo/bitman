@@ -59,7 +59,7 @@ diretamente os dados de outro contexto. Detalhes em [arquitetura.md](arquitetura
 |---|---|
 | `player` | — (joga e aparece nos rankings, com e-mail confirmado) |
 | `developer` | `games.submit` |
-| `admin` | todas (`games.submit`, `games.manage`, `users.manage-roles`, `audit.view` e as das próximas fases) |
+| `admin` | todas (`games.submit`, `games.manage`, `versions.authorize-import`, `users.manage-roles`, `audit.view` e as das próximas fases) |
 
 ### Game (Catalog)
 
@@ -107,7 +107,11 @@ stateDiagram-v2
     withdrawn --> [*]
 ```
 
-Estados terminais nunca voltam. Para tentar de novo, cria-se uma **nova versão**.
+Estados terminais nunca voltam. Para tentar de novo, cria-se uma **nova versão**
+(`RequestNewImport`, pela URL e ref atuais do jogo, de volta ao Portão 0). Um jogo tem
+**no máximo uma versão em andamento** (`import_requested`, `fetching`,
+`awaiting_commit_review`, `awaiting_file_review`), garantido por índice parcial no banco.
+A partir de `awaiting_commit_review`, `commit_sha` e o relatório são obrigatórios (`CHECK`, I13).
 
 ### VersionFile e decisões de arquivo
 
@@ -155,20 +159,34 @@ Ela é aplicada pelo domínio (`RepositoryPolicy`) sobre o manifesto devolvido p
 sandbox. É uma lista de regras independentes (padrão *Specification*), e cada regra
 produz zero ou mais violações. Os valores ficam em `config/ingestion.php`.
 
-| Regra | Tipo |
-|---|---|
-| `index.html`, `style.css` e `game.js` existem na raiz | Bloqueante |
-| Os arquivos obrigatórios são blobs regulares (modo `100644`): não podem ser symlink (`120000`), executável (`100755`) nem submodule (`160000`) | Bloqueante |
-| Nenhum submodule no repositório (sem `.gitmodules` e sem entradas `160000`) | Bloqueante |
-| Nenhum symlink no repositório | Bloqueante |
-| Cada arquivo obrigatório tem no máximo `max_file_bytes` (padrão 1 MiB) | Bloqueante |
-| Os arquivos obrigatórios são texto UTF-8 válido, sem bytes nulos | Bloqueante |
-| Total de entradas na árvore ≤ `max_tree_entries` (padrão 500) | Bloqueante |
-| Os paths não contêm `..`, barra inicial, `\`, caracteres de controle nem segmentos vazios | Bloqueante |
-| Qualquer outro arquivo é listado como **ignorado** (✗) e nunca entra na versão | Informativo |
+| Regra (classe) | Código | Tipo |
+|---|---|---|
+| `index.html`, `style.css` e `game.js` existem na raiz (`RequiredFilesPresent`) | `required_file_missing` | Bloqueante |
+| Os arquivos obrigatórios são blobs regulares (modo `100644`): não podem ser symlink (`120000`), executável (`100755`), submodule (`160000`) nem diretório (`RequiredFilesAreRegular`) | `required_file_not_regular` | Bloqueante |
+| Nenhum submodule no repositório: sem `.gitmodules` e sem entradas `160000` (`NoSubmodules`) | `submodule` | Bloqueante |
+| Nenhum symlink no repositório (`NoSymlinks`) | `symlink` | Bloqueante |
+| Cada arquivo obrigatório tem no máximo `max_file_bytes` (padrão 1 MiB). Um blob acima do limite nem é baixado (`RequiredFilesWithinSize`) | `file_too_large` | Bloqueante |
+| Os arquivos obrigatórios são texto UTF-8 válido, sem bytes nulos, e o conteúdo foi entregue (`RequiredFilesAreText`) | `not_text`, `content_missing` | Bloqueante |
+| Total de entradas na árvore ≤ `max_tree_entries` (padrão 500) (`TreeWithinEntryLimit`) | `too_many_entries` | Bloqueante |
+| Os paths não contêm `..`, `.`, `.git`, barra inicial, `\`, caracteres de controle, segmentos vazios nem UTF-8 inválido (`SafePaths`) | `unsafe_path` | Bloqueante |
+| Qualquer outro arquivo é listado como **ignorado** (✗) e nunca entra na versão | — | Informativo |
 
 Somente os paths da allowlist são extraídos. Os demais aparecem no relatório apenas
-como nome, tamanho e modo; o conteúdo deles não é baixado para a aplicação.
+como nome, tamanho e modo (no máximo `max_tree_entries` itens, com o total); o conteúdo
+deles não é baixado para a aplicação. Paths vindos do Git são bytes arbitrários: no
+relatório, bytes de controle e UTF-8 inválido aparecem escapados como `\xNN`.
+
+### Fetch (`GitSourceFetcher`)
+
+- Antes de qualquer regra, o snapshot confere que cada blob entregue é exatamente o objeto
+  Git que a árvore aponta (hash `blob {tamanho}\0{conteúdo}` e tamanho). Uma sandbox
+  comprometida não consegue trocar o conteúdo de um arquivo.
+- A falha é um código (`FetchFailure`): `ref_not_found`, `repository_unavailable`, `redirected`,
+  `timeout`, `too_large`, `too_many_entries`, `invalid_objects`, `sandbox_unavailable`,
+  `invalid_response`, `internal`… A versão vai para `fetch_failed` com o código, e o admin vê a
+  mensagem correspondente. Nenhum texto do servidor remoto chega à aplicação.
+- Com violações, a versão vai para `awaiting_commit_review` mesmo assim, com o relatório
+  `blocked`: o Portão 1 é que fica impedido de aprovar (I3).
 
 ## Invariantes
 

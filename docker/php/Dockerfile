@@ -16,9 +16,10 @@ RUN apk add --no-cache icu-libs libpq libzip libpng libjpeg-turbo libwebp \
     && apk del .build-deps \
     && rm -rf /tmp/pear
 
-# O php-fpm roda como www-data e grava as thumbnails. Um volume nomeado novo herda
-# o dono deste diretório da imagem.
-RUN mkdir -p /var/bitman/media/thumbnails && chown -R www-data:www-data /var/bitman/media
+# O php-fpm e o worker da fila rodam como www-data e gravam thumbnails, quarentena e
+# artefatos. Um volume nomeado novo herda o dono destes diretórios da imagem.
+RUN mkdir -p /var/bitman/media/thumbnails /var/bitman/quarantine /var/bitman/artifacts/served /var/bitman/artifacts/archive \
+    && chown -R www-data:www-data /var/bitman
 
 COPY --from=composer:2.8 /usr/bin/composer /usr/bin/composer
 COPY php.ini /usr/local/etc/php/conf.d/zz-bitman.ini

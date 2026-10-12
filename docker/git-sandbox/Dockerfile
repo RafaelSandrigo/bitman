@@ -1,4 +1,4 @@
-# bitman-git-sandbox (ADR 0003). Fase 0: apenas healthcheck; as operações Git chegam na Fase 3.
+# bitman-git-sandbox (ADR 0003, docs/seguranca.md G1–G8).
 FROM php:8.5-cli-alpine
 
 RUN apk add --no-cache git \
@@ -6,6 +6,7 @@ RUN apk add --no-cache git \
     && adduser -S -D -H -u 10001 -G sandbox sandbox
 
 COPY server.php /srv/sandbox/server.php
+COPY src/ /srv/sandbox/src/
 
 USER sandbox
 WORKDIR /tmp

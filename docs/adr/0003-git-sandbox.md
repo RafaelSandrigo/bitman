@@ -16,7 +16,7 @@ Um serviço `git-sandbox` dedicado e de vida longa, com cada requisição usando
 workspace `tmpfs` próprio e apagado ao final. O serviço:
 - não tem acesso a DB, Redis, volumes da aplicação nem redes internas. Fica numa rede `internal: true`, cuja única saída é o `egress-proxy`: um proxy `CONNECT` com allowlist (`github.com`, `gitlab.com`, `codeberg.org`, porta 443). Isso impede, no nível da rede, o acesso à LAN do servidor e aos outros projetos do host, sem depender de firewall no host;
 - roda como não-root, com rootfs read-only, `cap_drop: ALL`, `no-new-privileges` e limites de CPU, memória e pids;
-- cria um repositório **bare**, faz `fetch --depth=1` e lê árvore e blobs com `ls-tree`/`cat-file`, **sem checkout**;
+- cria um repositório **bare** (`clone --bare --depth=1 --filter=blob:limit=<max>`) e lê árvore e blobs com `ls-tree`/`cat-file`, **sem checkout**;
 - devolve um manifesto. Toda a validação é refeita pelo Laravel (zero trust também na sandbox).
 
 ## Consequências

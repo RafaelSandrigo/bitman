@@ -58,6 +58,15 @@ return [
             'report' => false,
         ],
 
+        // Quarentena das versões ainda não publicadas (nunca servida). Só o backend monta o volume.
+        'quarantine' => [
+            'driver' => 'local',
+            'root' => env('BITMAN_QUARANTINE_PATH', '/var/bitman/quarantine'),
+            'visibility' => 'private',
+            'throw' => true,
+            'report' => false,
+        ],
+
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),
