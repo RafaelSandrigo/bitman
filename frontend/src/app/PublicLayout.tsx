@@ -22,6 +22,9 @@ function UserMenu() {
 
   return (
     <div className="flex items-center gap-4 text-sm">
+      <NavLink to="/minhas-partidas" className="hover:text-emerald-400">
+        Minhas partidas
+      </NavLink>
       {hasPermission(user, Permission.SubmitGames) && (
         <NavLink to="/desenvolvedor/jogos" className="hover:text-emerald-400">
           Meus jogos

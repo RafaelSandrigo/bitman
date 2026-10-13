@@ -76,6 +76,8 @@ jobs:
         run: sh tests/infra/games-origin.sh
       - name: Thumbnails servidas pelo hub
         run: sh tests/infra/hub-media.sh
+      - name: Jogo de exemplo segue o protocolo e a CSP
+        run: sh tests/infra/example-game.sh
       - name: git-sandbox com repositórios-fixture maliciosos (manifestos iguais ao golden)
         run: sh tests/infra/sandbox-fixtures.sh
       - name: Sobe sandbox + egress-proxy

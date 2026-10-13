@@ -2,13 +2,14 @@ import { screen, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
 import { catalogHandler, makePublicGame } from '../../../test/games'
+import { leaderboardHandler } from '../../../test/play'
 import { renderAt } from '../../../test/render'
 import { server } from '../../../test/server'
 import { sessionHandlers } from '../../../test/session'
 import type { PublicGame } from '../game'
 
 function serveGame(game: PublicGame) {
-  server.use(...sessionHandlers(null).handlers, http.get(`/api/v1/games/${game.slug}`, () => HttpResponse.json({ data: game })))
+  server.use(...sessionHandlers(null).handlers, leaderboardHandler([], game.slug), http.get(`/api/v1/games/${game.slug}`, () => HttpResponse.json({ data: game })))
 }
 
 describe('catálogo e página do jogo', () => {

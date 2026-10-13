@@ -13,6 +13,7 @@ Route::prefix('v1')->name('v1.')->group(function (): void {
     require app_path('Modules/Identity/Http/routes.php');
     require app_path('Modules/Catalog/Http/routes.php');
     require app_path('Modules/Versioning/Http/routes.php');
+    require app_path('Modules/Play/Http/routes.php');
 
     Route::prefix('admin')
         ->name('admin.')
@@ -22,5 +23,6 @@ Route::prefix('v1')->name('v1.')->group(function (): void {
             require app_path('Modules/Audit/Http/admin-routes.php');
             require app_path('Modules/Catalog/Http/admin-routes.php');
             require app_path('Modules/Versioning/Http/admin-routes.php');
+            require app_path('Modules/Play/Http/admin-routes.php');
         });
 });

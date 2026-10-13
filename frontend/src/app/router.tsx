@@ -3,6 +3,7 @@ import { AdminLayout } from '../features/admin/AdminLayout'
 import { AdminGamePage } from '../features/admin/pages/AdminGamePage'
 import { AuditPage } from '../features/admin/pages/AuditPage'
 import { GamesPage } from '../features/admin/pages/GamesPage'
+import { ScoresPage } from '../features/admin/pages/ScoresPage'
 import { SubmissionsPage } from '../features/admin/pages/SubmissionsPage'
 import { UsersPage } from '../features/admin/pages/UsersPage'
 import { VersionPage } from '../features/admin/pages/VersionPage'
@@ -15,9 +16,10 @@ import { ResetPasswordPage } from '../features/auth/pages/ResetPasswordPage'
 import { VerifyEmailPage } from '../features/auth/pages/VerifyEmailPage'
 import { GamePage } from '../features/catalog/pages/GamePage'
 import { HomePage } from '../features/catalog/pages/HomePage'
+import { MyScoresPage } from '../features/play/pages/MyScoresPage'
 import { MyGamesPage } from '../features/submissions/pages/MyGamesPage'
 import { SubmitGamePage } from '../features/submissions/pages/SubmitGamePage'
-import { AdminGate, GuestOnly, RequirePermission } from './guards'
+import { AdminGate, GuestOnly, RequireAuth, RequirePermission } from './guards'
 import { NotFoundPage } from './NotFoundPage'
 import { PublicLayout } from './PublicLayout'
 
@@ -37,6 +39,7 @@ const routes: RouteObject[] = [
       },
       { element: <GuestOnly home="/verificar-email" />, children: [{ path: 'cadastro', element: <RegisterPage /> }] },
       { path: 'verificar-email', element: <VerifyEmailPage /> },
+      { element: <RequireAuth />, children: [{ path: 'minhas-partidas', element: <MyScoresPage /> }] },
       {
         path: 'desenvolvedor',
         element: (
@@ -65,6 +68,7 @@ const routes: RouteObject[] = [
               { path: 'versoes/:id', element: <VersionPage /> },
               { path: 'jogos', element: <GamesPage /> },
               { path: 'jogos/:id', element: <AdminGamePage /> },
+              { path: 'scores', element: <ScoresPage /> },
               { path: 'usuarios', element: <UsersPage /> },
               { path: 'auditoria', element: <AuditPage /> },
             ],

@@ -252,6 +252,16 @@ sequenceDiagram
 O jogo **não tem acesso à rede** (`connect-src 'none'`). Toda comunicação passa pela
 SPA. Contrato para desenvolvedores: [protocolo-do-jogo.md](protocolo-do-jogo.md).
 
+- `POST /games/{slug}/sessions` (login + e-mail confirmado, `throttle:game-sessions`) responde `201` com
+  `Cache-Control: no-store`. A `play_url` é a da versão da sessão; a SPA a confere com `isPlayUrl` antes de pôr no iframe.
+- `POST /game-sessions/{id}/score` (`throttle:score-submissions`): a transação trava a sessão (`FOR UPDATE`), confere
+  token, estado, prazo e duração, calcula a sinalização sobre a distribuição atual do jogo e grava o `Score`. Envios
+  concorrentes esperam o lock e recebem 409; o `unique(game_session_id)` cobre o que escapar.
+- `GET /games/{slug}/leaderboard` (público) vem do `CachedLeaderboard` (Redis, TTL de 10 min), invalidado **depois
+  do commit** de `ScoreRecorded`, `ScoreHidden` e `ScoreRestored`. A posição do jogador na resposta do envio é lida
+  do banco. `GET /me/scores` é o histórico do jogador.
+- Visitante e conta sem e-mail confirmado jogam sem sessão: o iframe usa a `play_url` do catálogo e nenhum score é enviado.
+
 ## Frontend
 
 React 19 + TypeScript (strict) + Vite.

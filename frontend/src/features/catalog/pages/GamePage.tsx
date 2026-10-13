@@ -1,17 +1,12 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router'
 import { ApiError, errorMessage } from '../../../shared/api/http'
-import { isPlayUrl } from '../../../shared/config'
 import { Alert } from '../../../shared/ui/Alert'
+import { GamePlayer } from '../../play/GamePlayer'
+import { Leaderboard } from '../../play/Leaderboard'
 import { getPublishedGame } from '../game'
 
-/**
- * Página do jogo. O jogo roda num iframe da origem isolada (ADR 0004):
- * - `sandbox="allow-scripts"` sem `allow-same-origin` → origem opaca, sem cookies nem storage (J1);
- * - sem `allow-top-navigation`, `allow-popups`, `allow-forms` e `allow-modals` (J3);
- * - nenhum recurso liberado via `allow` e sem Referer.
- * A borda e o aviso deixam claro onde começa o conteúdo de terceiros (J3).
- */
+/** Página do jogo: a partida (iframe isolado + sessão de score) e o ranking. */
 export function GamePage() {
   const { slug = '' } = useParams()
   const game = useQuery({ queryKey: ['games', slug], queryFn: () => getPublishedGame(slug), retry: false })
@@ -43,24 +38,11 @@ export function GamePage() {
         </p>
       </header>
 
-      <div className="rounded-lg border-2 border-dashed border-amber-700/70 p-2">
-        {isPlayUrl(data.play_url) ? (
-          <iframe
-            title={`Jogo: ${data.name}`}
-            src={data.play_url}
-            sandbox="allow-scripts"
-            referrerPolicy="no-referrer"
-            className="aspect-video w-full rounded bg-black"
-          />
-        ) : (
-          <Alert tone="error">Não foi possível carregar o jogo com segurança.</Alert>
-        )}
-        <p className="mt-2 text-xs text-amber-200/80">
-          Conteúdo enviado por {data.author_name}. Ele roda isolado: não acessa a sua conta, a internet nem outras páginas.
-        </p>
-      </div>
+      <GamePlayer game={data} />
 
       <p className="whitespace-pre-line text-slate-300">{data.description}</p>
+
+      <Leaderboard slug={data.slug} />
     </article>
   )
 }

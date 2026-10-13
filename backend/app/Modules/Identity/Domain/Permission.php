@@ -23,6 +23,8 @@ enum Permission: string
     case PublishVersions = 'versions.publish';
     /** Bloquear e desbloquear um jogo publicado (J6). */
     case BlockGames = 'games.block';
+    /** Ver os scores (sinalizados ou não) e ocultá-los do ranking ou devolvê-los (S2). */
+    case ModerateScores = 'scores.moderate';
     case ManageRoles = 'users.manage-roles';
     case ViewAudit = 'audit.view';
 }

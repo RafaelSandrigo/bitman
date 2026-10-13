@@ -45,6 +45,17 @@ export function AdminGate() {
   return <Outlet />
 }
 
+/** Área de quem está logado (ex.: histórico de partidas). Só conveniência de interface. */
+export function RequireAuth() {
+  const { data: user, isPending } = useCurrentUser()
+  const location = useLocation()
+
+  if (isPending) return <Loading />
+  if (!user) return <Navigate to={`/entrar?next=${encodeURIComponent(location.pathname + location.search)}`} replace />
+
+  return <Outlet />
+}
+
 /** Área que exige uma permissão (ex.: `games.submit` para a área do developer). Só conveniência de interface. */
 export function RequirePermission({ permission, deniedMessage }: { permission: Permission; deniedMessage: string }) {
   const { data: user, isPending } = useCurrentUser()

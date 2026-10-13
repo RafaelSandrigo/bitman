@@ -26,6 +26,8 @@ const actionLabels: Record<string, string> = {
   'versioning.version-withdrawn': 'Versão retirada',
   'catalog.game-blocked': 'Jogo bloqueado',
   'catalog.game-unblocked': 'Jogo desbloqueado',
+  'play.score-hidden': 'Score ocultado do ranking',
+  'play.score-restored': 'Score devolvido ao ranking',
 }
 
 const dateFormat = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'medium' })

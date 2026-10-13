@@ -129,17 +129,27 @@ catálogo com os arquivos servidos idênticos ao conteúdo aprovado (`EndToEndPu
 nunca é acessível pela origem de jogos: só a publicação cria o diretório servido, e retirada, bloqueio e substituição o
 removem (`PublicationTest`). O E2E num navegador de verdade (Playwright) ficou para depois ([melhorias M11](melhorias.md)).
 
-## Fase 6 — Partidas, scores e ranking ⬜
+## Fase 6 — Partidas, scores e ranking ✅
 
-- `GameSession` com token de uso único, expiração e duração mínima (I10).
-- Bridge `postMessage` na SPA (J4) e envio de score (S1, S2).
-- Ranking por jogo (melhor score por jogador), histórico do usuário e cache Redis
-  invalidado a cada novo score.
-- Admin: ver e ocultar scores sinalizados.
-- Jogo de exemplo em um repositório público, seguindo o [protocolo](protocolo-do-jogo.md).
+- ✅ Contexto **Play**: `GameSession` com token de uso único (só o SHA-256 é guardado), prazo de 2 h e duração
+  mínima de 5 s (I10). Começar uma partida encerra a anterior do mesmo jogo (índice parcial: uma aberta por jogador e
+  jogo). Só conta com e-mail confirmado joga valendo score (A5); visitante joga sem sessão.
+- ✅ Bridge `postMessage` na SPA (J4): só `event.source === iframe.contentWindow` com origem opaca, schema Zod e um
+  único `game-over` por partida. Score inválido é rejeitado no hub, nunca arredondado.
+- ✅ Envio do score (S1, S2): sessão travada na transação + `unique(game_session_id)`; inteiro JSON em
+  `0..Number.MAX_SAFE_INTEGER` (string, fração e `1e3` são rejeitados); rate limit por jogador e jogo; jogo bloqueado
+  ou versão retirada durante a partida não pontua. Score acima do p99 × 3 (com 20+ scores) é **sinalizado**.
+- ✅ Ranking por jogo (melhor score por jogador, todas as versões, empates na mesma posição) em cache (Redis em
+  produção), invalidado depois do commit de cada score registrado, ocultado ou devolvido. Histórico em
+  **Minhas partidas**.
+- ✅ Admin › **Scores** (`scores.moderate`): sinalizados, ocultos e todos; ocultar do ranking com motivo e devolver,
+  auditados (`play.score-hidden`, `play.score-restored`).
+- ✅ Jogo de exemplo (`examples/snake`) seguindo o [protocolo](protocolo-do-jogo.md#jogo-de-exemplo), conferido por
+  `tests/infra/example-game.sh`. Falta só publicá-lo num repositório público e passá-lo pelos portões.
 
-**Aceite:** reenviar o mesmo score (replay) falha, e envios concorrentes resultam em
-exatamente um registro. A limitação dos scores aparece na UI do ranking.
+**Aceite:** ✅ reenviar o mesmo score (replay) falha com 409 (`GameSessionTest`), e envios concorrentes resultam em
+exatamente um registro: `ScoreConcurrencyTest` dispara 6 processos (`pcntl_fork`), cada um com a própria conexão ao
+PostgreSQL, no mesmo instante. ✅ A limitação dos scores aparece na UI do ranking (`GamePlayer.test.tsx`).
 
 ## Fase 7 — Painel administrativo e auditoria ⬜
 

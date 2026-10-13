@@ -60,8 +60,9 @@ test-back: ## Testes do backend (banco bitman_test)
 test-front: ## Testes do frontend
 	$(NODE) npm test
 
-test-infra: ## Testes de infraestrutura (origem de jogos, thumbnails, fixtures e egress da sandbox)
+test-infra: ## Testes de infraestrutura (origem de jogos, thumbnails, jogo de exemplo, fixtures e egress da sandbox)
 	sh tests/infra/games-origin.sh
+	sh tests/infra/example-game.sh
 	sh tests/infra/hub-media.sh
 	sh tests/infra/sandbox-fixtures.sh
 	sh tests/infra/sandbox-egress.sh

@@ -81,11 +81,31 @@ Regras:
 - Mensagens fora do formato são ignoradas silenciosamente.
 - O jogo **nunca** recebe token, cookie ou dado pessoal do jogador.
 
+## Score e ranking
+
+- Só jogador logado e com e-mail confirmado joga valendo score. Cada partida é uma sessão
+  de uso único, criada pelo hub quando o jogo carrega e a cada **Jogar de novo**.
+- A partida precisa durar pelo menos alguns segundos e terminar dentro do prazo da sessão (2 h).
+- O ranking mostra o melhor score de cada jogador, em todas as versões do jogo.
+- O score vem do navegador e pode ser forjado. Scores muito acima do padrão do jogo são
+  sinalizados para a administração, que pode ocultá-los do ranking.
+
+## Jogo de exemplo
+
+[`examples/snake`](../examples/snake) é um Snake mínimo que segue este protocolo: os três
+arquivos, nada externo, `ready` ao carregar e um único `game-over`. O `tests/infra/example-game.sh`
+confere o protocolo e a CSP. Para publicá-lo, o diretório vira a raiz de um repositório público:
+
+```sh
+git subtree split --prefix=examples/snake -b exemplo-snake
+git push git@github.com:<usuário>/bitman-snake.git exemplo-snake:main
+git branch -D exemplo-snake
+```
+
 ## Publicação de uma nova versão
 
 1. Faça push das alterações no repositório.
-2. No Bitman, em *Meus jogos*, clique em **Solicitar nova versão** (opcionalmente
-   informando branch ou tag).
+2. No Bitman, em *Meus jogos*, clique em **Enviar nova versão**.
 3. Um administrador revisa o commit e cada arquivo. Você acompanha o status, mas
    não participa da aprovação.
 4. Depois de publicada, a nova versão substitui a anterior em `/games/{slug}`.

@@ -59,7 +59,7 @@ diretamente os dados de outro contexto. Detalhes em [arquitetura.md](arquitetura
 |---|---|
 | `player` | — (joga e aparece nos rankings, com e-mail confirmado) |
 | `developer` | `games.submit` |
-| `admin` | todas (`games.submit`, `games.manage`, `versions.authorize-import`, `users.manage-roles`, `audit.view` e as das próximas fases) |
+| `admin` | todas: `games.submit`, `games.manage`, `versions.authorize-import`, `versions.approve-commit`, `files.review`, `versions.publish`, `games.block`, `scores.moderate`, `users.manage-roles` e `audit.view` |
 
 ### Game (Catalog)
 
@@ -161,11 +161,24 @@ total e se há novas (`GET /api/v1/admin/versions/summary`).
 ### GameSession e Score (Play)
 
 - `GameSession`: `id` (ULID), `userId`, `gameId`, `gameVersionId`, `tokenHash`,
-  `status` (`open` → `scored` | `expired`), `startedAt` e `expiresAt`.
+  `status` (`open` → `scored` | `expired`), `startedAt`, `expiresAt` e `endedAt`.
+  - `start()` só numa versão jogável (I9) e para conta com e-mail confirmado (A5). Gera um token de 256 bits; só o
+    SHA-256 é guardado, e o token em claro vai uma única vez para a SPA (nunca para o jogo).
+  - Começar uma partida expira a aberta anterior do mesmo jogo (`expired`): no máximo uma `open` por jogador e jogo
+    (índice parcial). Depois de `expiresAt` (2 h), a sessão continua `open` no banco, mas não aceita score.
+  - `recordScore()` aplica I10, nesta ordem: o token confere e a sessão é do jogador (senão, "sessão inválida", sem
+    revelar mais nada); está `open` (`scored` → replay, 409); dentro do prazo; durou o mínimo (5 s).
 - `Score`: `gameSessionId` (único), `userId`, `gameId`, `gameVersionId`, `value`
-  (ver limite abaixo), `flagged` + `flagReason` e `createdAt`.
-- O ranking por jogo é o melhor `value` por usuário, considerando todas as versões do
-  jogo, com a versão exibida ao lado.
+  (ver limite abaixo), `flagged` + `flagReason`, ocultação (`hiddenById`, `hiddenAt`, `hideReason`) e `createdAt`.
+  - Sinalizado (S2) quando o jogo já tem 20+ scores visíveis e o valor passa de p99 × 3 (`AnomalyPolicy`). Continua
+    no ranking até um admin decidir.
+  - `hide()` (motivo obrigatório, `play.score-hidden`) e `restore()` (`play.score-restored`), com `scores.moderate`.
+    O valor nunca muda.
+  - Jogo bloqueado ou versão retirada durante a partida: o score não entra. Versão substituída durante a partida:
+    vale, com a versão em que foi jogado.
+- O ranking por jogo é o melhor `value` visível (não oculto) por usuário, considerando todas as versões do
+  jogo, com a versão exibida ao lado. Empates ficam na mesma posição (1, 1, 3); entre eles, quem chegou primeiro
+  aparece antes. Mostra as 100 primeiras posições.
 
 ### Score: limite técnico
 
@@ -235,7 +248,7 @@ relatório, bytes de controle e UTF-8 inválido aparecem escapados como `\xNN`.
 | I7 | O artefato publicado é escrito uma única vez e nunca é sobrescrito. Se o destino já existe, a operação falha. |
 | I8 | Um jogo tem no máximo uma versão `published`. Publicar uma nova move a anterior para `superseded` na mesma transação. |
 | I9 | Só jogos `published` (não bloqueados), com versão `published`, aparecem na listagem e podem ser executados ou receber sessões. |
-| I10 | Uma sessão aceita no máximo um score, deve estar `open`, não expirada, pertencer ao usuário autenticado e ter durado pelo menos `min_session_seconds`. |
+| I10 | Uma sessão aceita no máximo um score, deve estar `open`, não expirada, pertencer ao usuário autenticado (com o token dela) e ter durado pelo menos `min_session_seconds`. Testes: `GameSessionTest`, `ScoreConcurrencyTest`. |
 | I11 | Toda decisão de portão, publicação, retirada e bloqueio gera um `AuditEntry` na mesma transação, com ator, data, estado analisado (commit/hash) e motivo. O motivo é obrigatório nas rejeições. |
 | I12 | Um usuário sem role `admin` (incluindo o dono do jogo) não consegue executar nenhuma ação de I1, qualquer que seja o endpoint ou o caminho usado. |
 | I13 | O que é analisado e publicado é exatamente o conteúdo obtido no fetch daquela versão (quarentena), vinculado ao `commitSha` resolvido. O repositório nunca é consultado de novo para a mesma versão. |
