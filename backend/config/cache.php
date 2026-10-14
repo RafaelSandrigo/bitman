@@ -38,7 +38,8 @@ return [
 
         'array' => [
             'driver' => 'array',
-            'serialize' => false,
+            // Serializa como o Redis: nos testes, um objeto no cache falha igual à produção.
+            'serialize' => true,
         ],
 
         'database' => [
