@@ -172,7 +172,8 @@ PostgreSQL, no mesmo instante. ✅ A limitação dos scores aparece na UI do ran
 
 Executado quando o Bitman sair do pré-lançamento:
 
-- [ ] Remover os middlewares `bitman-auth` e `bitman-noindex` das labels do `bitman-web` e o `noindex` do `index.html`.
+- [x] Remover o middleware `bitman-auth` (autenticação básica) das labels do `bitman-web` — antecipado em 13/10/2026.
+- [ ] Remover o middleware `bitman-noindex` das labels do `bitman-web` e o `noindex` do `index.html`.
 - [ ] Imagem PHP de produção com o código embutido, `composer install --no-dev` (o Boost sai junto) e `opcache.validate_timestamps=0`.
 - [ ] Build do frontend dentro da imagem do `bitman-web`; remover o serviço `frontend` (watch).
 - [ ] Conferir `APP_ENV=production` e `APP_DEBUG=false`.

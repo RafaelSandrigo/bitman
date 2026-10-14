@@ -60,11 +60,9 @@ services:
       - "traefik.http.routers.bitman.rule=Host(`${HUB_DOMAIN}`)"
       - "traefik.http.routers.bitman.entrypoints=web"
       - "traefik.http.routers.bitman.service=bitman-web"
-      - "traefik.http.routers.bitman.middlewares=bitman-auth,bitman-noindex"
+      - "traefik.http.routers.bitman.middlewares=bitman-noindex"
       - "traefik.http.services.bitman-web.loadbalancer.server.port=80"
-      # Pré-lançamento: remover estes middlewares no lançamento (docs/plano.md).
-      - "traefik.http.middlewares.bitman-auth.basicauth.users=${BITMAN_BASIC_AUTH}"
-      - "traefik.http.middlewares.bitman-auth.basicauth.removeheader=true"
+      # Pré-lançamento: remover este middleware no lançamento (docs/plano.md).
       - "traefik.http.middlewares.bitman-noindex.headers.customresponseheaders.X-Robots-Tag=noindex, nofollow"
 
   bitman-games:

@@ -76,5 +76,3 @@ stan: ## Análise estática (Larastan)
 
 check: lint stan test ## Tudo que o CI roda
 
-basic-auth: ## Gera a linha do BITMAN_BASIC_AUTH (make basic-auth USER=rafael PASS='senha')
-	@$(COMPOSE) run --rm --no-deps -T app php -r 'echo "BITMAN_BASIC_AUTH='"'"'".$$argv[1].":".password_hash($$argv[2], PASSWORD_BCRYPT)."'"'"'\n";' "$(USER)" "$(PASS)"

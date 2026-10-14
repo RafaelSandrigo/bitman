@@ -84,13 +84,13 @@ Enquanto não há usuários reais:
 
 | Item | Pré-lançamento | No lançamento (ver [plano.md](plano.md#checklist-de-lançamento)) |
 |---|---|---|
-| Acesso ao hub | Autenticação básica no Traefik (`BITMAN_BASIC_AUTH`) + `X-Robots-Tag: noindex` | Removidos |
+| Indexação do hub | `X-Robots-Tag: noindex` no Traefik e `noindex` no `index.html` | Removidos |
 | Código PHP | Bind mount de `./backend` (mudança vale na hora) | Imagem com o código embutido, sem dependências de dev |
 | Frontend | Container `frontend` com `vite build --watch` gerando `frontend/dist` | Build feito na imagem do `bitman-web` |
 | OPcache | Revalida timestamps | `validate_timestamps=0` |
 
-O host de jogos **não** tem autenticação básica: o navegador não pede senha para recursos de um iframe isolado de
-outra origem, e esse host só serve jogos publicados, em caminhos UUID não adivinháveis, com `noindex`.
+O hub e o host de jogos são públicos (a autenticação básica do hub foi retirada em 13/10/2026). O host de jogos
+só serve jogos publicados, em caminhos UUID não adivinháveis, com `noindex`.
 
 ## Containers
 

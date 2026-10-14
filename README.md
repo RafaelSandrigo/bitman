@@ -42,5 +42,5 @@ make check    # lint + análise estática + todos os testes (o mesmo que o CI)
 make logs s=app
 ```
 
-Hub: https://bitman.sandrigo.com.br (autenticação básica até o lançamento) ·
+Hub: https://bitman.sandrigo.com.br ·
 Jogos: https://bitman-games.sandrigo.com.br

@@ -66,7 +66,7 @@ como cada uma é mitigada e onde a mitigação é verificada. Uma mitigação se
 | # | Ameaça | Mitigação | Verificação |
 |---|---|---|---|
 | O1 | Testes apagam ou poluem os dados reais (o projeto é desenvolvido no servidor de produção) | `phpunit.xml` força `DB_DATABASE=bitman_test` em `<env>` **e** `<server>` (o Laravel lê `$_SERVER` primeiro: só `<env>` não bastava, e o teste-trava pegou isso) | `tests/Feature/TestEnvironmentTest.php` |
-| O2 | Exposição pública antes do lançamento | Autenticação básica no Traefik + `X-Robots-Tag: noindex` no hub; `noindex` também no host de jogos | Verificação manual com `curl` (401 sem senha) |
+| O2 | Exposição pública antes do lançamento | `X-Robots-Tag: noindex` no hub e no host de jogos (a autenticação básica do hub foi retirada em 13/10/2026; o acesso é controlado pelo login da aplicação) | `tests/infra/games-origin.sh`; verificação manual com `curl -I` |
 | O3 | Um comando do projeto derruba os vizinhos | Regras de [convencoes.md](convencoes.md#operação-segura-no-servidor-de-produção), `Makefile` restrito ao projeto e limites de CPU/memória em todo container | Revisão de PR |
 
 ### Contas, API e scores
