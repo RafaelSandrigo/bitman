@@ -18,6 +18,11 @@ Leia [docs/README.md](docs/README.md) antes de começar. Fontes da verdade:
 
 Regras inegociáveis:
 - TDD: o teste vem antes do código de produção. Testes citam o ID da invariante ou ameaça.
+- Todo bug corrigido ganha um teste de regressão, escrito antes da correção (falha pelo motivo do bug, passa depois).
+- Estilo de código: funções de 4 a 20 linhas, arquivos abaixo de 500, uma responsabilidade por módulo, nomes
+  específicos, tipos explícitos, sem duplicação, *early return* (máx. 2 níveis), exceções com o valor e o formato
+  esperado, dependências injetadas, comentários dizem o porquê (e não são apagados ao refatorar), logs em JSON
+  estruturado. Detalhes em `docs/convencoes.md#estilo-de-código`.
 - Conteúdo vindo do Git ou dos jogos é sempre não confiável. Nunca vai para shell, path ou HTML sem tratamento.
 - Toda ação administrativa autoriza pelo Gate dentro da Action (permissão ou Policy), gera um AuditEntry
   (evento `Auditable` despachado na transação) e tem a rota no grupo `/api/v1/admin` de `routes/api.php`.

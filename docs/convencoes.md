@@ -55,6 +55,12 @@ Qualquer comando roda em produção. Regras, para pessoas e agentes de IA:
   um teste que cita o ID no nome ou na descrição.
 - Para portas, use **fakes** em memória (`FakeGitSourceFetcher`) em vez de mocks
   frágeis. Use mocks só para verificar interações que importam.
+- **Todo bug corrigido ganha um teste de regressão**, escrito antes da correção: ele precisa falhar
+  pelo motivo do bug e passar depois do conserto. O nome ou o comentário do teste cita a causa (e a
+  issue ou o commit, quando houver), para que ninguém o apague por parecer redundante.
+- Todo código novo (função, Action, componente) nasce com teste. Os testes seguem o **F.I.R.S.T.**:
+  rápidos, independentes, repetíveis, autovalidáveis e escritos no momento certo (junto do código).
+  Rodam com um único comando: `make test`.
 - Não há meta de cobertura global. `Domain` e `Application` devem ficar perto de 100%,
   e o teste de mutação (`pest --mutate`) roda nos módulos `Versioning` e `Ingestion`.
 
@@ -78,6 +84,35 @@ Tudo isso roda no CI e localmente via `make check`. **PR com CI vermelho não é
 - No frontend, todo dado que chega de fora (API, `postMessage`) passa por um schema
   Zod antes de ser usado. Sem `any`.
 
+## Estilo de código
+
+- **Funções** de 4 a 20 linhas. Passou disso, divida.
+- **Arquivos** com menos de 500 linhas, divididos por responsabilidade.
+- Uma coisa por função e uma responsabilidade por módulo (SRP).
+- **Nomes** específicos e únicos. Evite `data`, `handler`, `Manager`; prefira nomes que apareçam em
+  menos de 5 resultados de `grep` no código.
+- **Tipos** explícitos: sem `any`, sem arrays ou `Record` sem forma definida, sem função sem tipo.
+- Sem duplicação: a lógica compartilhada vira função ou módulo.
+- *Early return* em vez de `if` aninhado, com no máximo 2 níveis de indentação.
+- Mensagens de exceção trazem o **valor recebido** e o **formato esperado**.
+- Dependências entram por construtor ou parâmetro, nunca por global ou import direto. Biblioteca de
+  terceiros fica atrás de uma interface pequena que pertence ao projeto (as portas de `Domain`).
+- Siga a convenção do framework (Laravel, React Router) e caminhos previsíveis. Prefira módulos
+  pequenos e focados a arquivos que fazem tudo.
+- Formatação é a do formatador padrão da linguagem (Pint no backend), sem discussão de estilo além disso.
+
+### Comentários
+
+- Mantenha os comentários existentes: eles guardam intenção e origem. Não os apague ao refatorar.
+- Escreva o **porquê**, não o quê. Nada de `// incrementa o contador` acima de `i++`.
+- Funções públicas têm docblock com a intenção e um exemplo de uso.
+- Cite a issue ou o SHA do commit quando a linha existe por causa de um bug ou de uma restrição externa.
+
+### Logs
+
+- Logs de depuração e observabilidade são JSON estruturado. Texto simples só na saída de comandos
+  feita para o usuário (por exemplo, `artisan`).
+
 ## Git
 
 - Trunk-based: branches curtas a partir de `main` (`feat/…`, `fix/…`, `docs/…`, `chore/…`).
@@ -90,7 +125,7 @@ Tudo isso roda no CI e localmente via `make check`. **PR com CI vermelho não é
 Uma entrega está pronta quando:
 
 1. Os critérios de aceite da fase ([plano.md](plano.md)) são atendidos.
-2. Os testes foram escritos antes ou junto e o CI está verde.
+2. Os testes foram escritos antes ou junto, o CI está verde e todo bug corrigido tem teste de regressão.
 3. As regras de autorização e auditoria aplicáveis estão cobertas por teste.
 4. A documentação afetada foi atualizada no mesmo PR, e há um ADR se houve decisão difícil de reverter.
 5. Não há TODO sem issue associada.
