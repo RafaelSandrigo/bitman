@@ -1,5 +1,5 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useState, type FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { errorMessage } from '../../../shared/api/http'
 import { Alert } from '../../../shared/ui/Alert'
@@ -108,6 +108,9 @@ export function VersionsPage() {
   const [params, setParams] = useSearchParams()
   const requested = params.get('estado')
   const status: VersionStatus = isQueue(requested) ? requested : 'import_requested'
+  const search = params.get('busca') ?? ''
+  const ready = params.get('prontas') === '1' && status === 'awaiting_file_review'
+  const [draft, setDraft] = useState(search)
   const [page, setPage] = useState(1)
 
   const summary = useQuery({
@@ -117,8 +120,8 @@ export function VersionsPage() {
     refetchInterval: 30_000,
   })
   const versions = useQuery({
-    queryKey: ['admin', 'versions', status, page],
-    queryFn: () => listVersions(status, page),
+    queryKey: ['admin', 'versions', status, page, search, ready],
+    queryFn: () => listVersions(status, page, { search, ready }),
     placeholderData: keepPreviousData,
     // A busca roda na fila: acompanha até terminar.
     refetchInterval: status === 'fetching' ? 3000 : false,
@@ -126,9 +129,21 @@ export function VersionsPage() {
 
   useMarkSeen(versions.data?.data)
 
-  function selectQueue(queue: VersionStatus) {
+  /** A fila, a busca e o recorte "prontas" vivem na URL: o painel e os links levam direto a eles. */
+  function navigate(next: { queue?: VersionStatus; search?: string; ready?: boolean }) {
+    const queue = next.queue ?? status
+    const query = new URLSearchParams()
+    if (queue !== 'import_requested') query.set('estado', queue)
+    const text = (next.search ?? search).trim()
+    if (text) query.set('busca', text)
+    if ((next.ready ?? ready) && queue === 'awaiting_file_review') query.set('prontas', '1')
     setPage(1)
-    setParams(queue === 'import_requested' ? {} : { estado: queue })
+    setParams(query)
+  }
+
+  function submitSearch(event: FormEvent) {
+    event.preventDefault()
+    navigate({ search: draft })
   }
 
   return (
@@ -146,20 +161,41 @@ export function VersionsPage() {
             type="button"
             role="tab"
             aria-selected={queue === status}
-            aria-label={queueLabel(queue, summary.data)}
-            onClick={() => selectQueue(queue)}
+            aria-label={queueLabel(queue, summary.data?.queues)}
+            onClick={() => navigate({ queue, ready: false })}
             className={`rounded-md px-3 py-1 text-sm ${queue === status ? 'bg-slate-800 font-semibold text-emerald-400' : 'text-slate-300 hover:bg-slate-900'}`}
           >
             <span className="inline-flex items-center gap-1.5">
               {versionStatusLabels[queue]}
               {summary.data && (
-                <span className="rounded-full bg-slate-700 px-1.5 text-xs font-normal text-slate-200">{summary.data[queue].total}</span>
+                <span className="rounded-full bg-slate-700 px-1.5 text-xs font-normal text-slate-200">{summary.data.queues[queue].total}</span>
               )}
-              {summary.data && summary.data[queue].new > 0 && <NewTag />}
+              {summary.data && summary.data.queues[queue].new > 0 && <NewTag />}
             </span>
           </button>
         ))}
       </div>
+
+      <form onSubmit={submitSearch} role="search" className="flex flex-wrap items-center gap-3">
+        <input
+          type="search"
+          aria-label="Buscar por jogo ou solicitante"
+          placeholder="Jogo, slug ou solicitante"
+          maxLength={100}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          className="w-72 rounded-md border border-slate-700 bg-slate-900 px-3 py-2"
+        />
+        <Button type="submit" variant="secondary">
+          Buscar
+        </Button>
+        {status === 'awaiting_file_review' && (
+          <label className="flex items-center gap-2 text-sm text-slate-300">
+            <input type="checkbox" checked={ready} onChange={(e) => navigate({ ready: e.target.checked })} />
+            Só as prontas para publicar
+          </label>
+        )}
+      </form>
 
       {versions.isError && <Alert tone="error">{errorMessage(versions.error)}</Alert>}
       {versions.isPending && <p className="text-slate-400">Carregando…</p>}

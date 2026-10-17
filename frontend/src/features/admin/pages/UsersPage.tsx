@@ -90,7 +90,7 @@ export function UsersPage() {
                           {isDeveloper ? 'Rebaixar de developer' : 'Promover a developer'}
                         </Button>
                         <Link
-                          to={`/admin/auditoria?subject_type=user&subject_id=${encodeURIComponent(user.id)}`}
+                          to={`/admin/auditoria?user_id=${encodeURIComponent(user.id)}`}
                           className="self-center text-emerald-400 hover:underline"
                         >
                           Histórico

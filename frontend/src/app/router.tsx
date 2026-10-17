@@ -2,6 +2,7 @@ import { createBrowserRouter, createMemoryRouter, Navigate, type RouteObject } f
 import { AdminLayout } from '../features/admin/AdminLayout'
 import { AdminGamePage } from '../features/admin/pages/AdminGamePage'
 import { AuditPage } from '../features/admin/pages/AuditPage'
+import { DashboardPage } from '../features/admin/pages/DashboardPage'
 import { GamesPage } from '../features/admin/pages/GamesPage'
 import { ScoresPage } from '../features/admin/pages/ScoresPage'
 import { SubmissionsPage } from '../features/admin/pages/SubmissionsPage'
@@ -61,7 +62,7 @@ const routes: RouteObject[] = [
           {
             element: <AdminLayout />,
             children: [
-              { index: true, element: <Navigate to="submissoes" replace /> },
+              { index: true, element: <DashboardPage /> },
               { path: 'submissoes', element: <SubmissionsPage /> },
               { path: 'versoes', element: <VersionsPage /> },
               { path: 'importacoes', element: <Navigate to="/admin/versoes" replace /> },

@@ -118,8 +118,12 @@ const VersionPageSchema = z.object({
   meta: z.object({ current_page: z.number(), last_page: z.number(), total: z.number() }),
 })
 
-export function listVersions(status: VersionStatus, page: number) {
+export type VersionFilters = { search?: string; ready?: boolean }
+
+export function listVersions(status: VersionStatus, page: number, filters: VersionFilters = {}) {
   const query = new URLSearchParams({ status, page: String(page) })
+  if (filters.search) query.set('search', filters.search)
+  if (filters.ready) query.set('ready', '1')
   return apiGet(`/api/v1/admin/versions?${query}`, VersionPageSchema)
 }
 
@@ -181,12 +185,14 @@ export function reviewFile(versionId: string, fileId: string, decision: { decisi
 
 const SummarySchema = z.object({
   data: z.record(z.enum(versionStatuses), z.object({ total: z.number().int().nonnegative(), new: z.number().int().nonnegative() })),
+  meta: z.object({ ready_to_publish: z.number().int().nonnegative() }),
 })
 export type VersionSummary = z.infer<typeof SummarySchema>['data']
 
-/** Contadores das filas: total e novos por estado. */
+/** Contadores das filas (total e novos por estado) e quantas versões só esperam a publicação. */
 export async function getVersionSummary() {
-  return (await apiGet('/api/v1/admin/versions/summary', SummarySchema)).data
+  const summary = await apiGet('/api/v1/admin/versions/summary', SummarySchema)
+  return { queues: summary.data, readyToPublish: summary.meta.ready_to_publish }
 }
 
 /** O admin viu estas versões no estado exibido: deixam de ser "novas". */

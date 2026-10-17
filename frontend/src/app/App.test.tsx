@@ -5,6 +5,7 @@ import { catalogHandler } from '../test/games'
 import { renderAt } from '../test/render'
 import { server } from '../test/server'
 import { makeAdmin, makeUser, sessionHandlers } from '../test/session'
+import { queueHandlers } from '../test/versions'
 
 describe('App', () => {
   it('mostra a página inicial do Bitman', async () => {
@@ -74,13 +75,11 @@ describe('área admin (só interface: quem autoriza é a API)', () => {
     server.use(
       catalogHandler(),
       ...sessionHandlers(makeAdmin()).handlers,
-      http.get('/api/v1/admin/submissions', () =>
-        HttpResponse.json({ data: [], meta: { current_page: 1, last_page: 1, total: 0 } }),
-      ),
+      ...queueHandlers().handlers,
     )
     renderAt('/admin')
 
-    expect(await screen.findByRole('heading', { name: 'Submissões' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Painel' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Admin' })).toBeInTheDocument()
   })
 })

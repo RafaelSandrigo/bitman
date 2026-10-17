@@ -11,8 +11,10 @@ use App\Modules\Versioning\Application\Actions\ImportRepository;
 use App\Modules\Versioning\Application\Actions\RequestNewImport;
 use App\Modules\Versioning\Domain\GameVersion;
 use App\Modules\Versioning\Domain\VersionStatus;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 /*
 | Filas do admin: contadores por estado e a tag "Novo" (nenhum admin viu a versão no estado atual).
@@ -107,4 +109,67 @@ it('um developer não vê os contadores nem marca versões', function (): void {
 
     $this->actingAs($developer)->getJson('/api/v1/admin/versions/summary')->assertForbidden();
     $this->actingAs($developer)->postJson('/api/v1/admin/versions/seen', ['versions' => [['id' => '01JAAAAAAAAAAAAAAAAAAAAAAA', 'status' => 'import_requested']]])->assertForbidden();
+});
+
+it('conta as versões prontas para publicar: em revisão de arquivos com todos eles aprovados', function (): void {
+    $withFiles = function (GameVersion $version, array $statuses): GameVersion {
+        foreach ($statuses as $i => $status) {
+            DB::table('version_files')->insert([
+                'id' => (string) Str::ulid(), 'game_version_id' => $version->id, 'path' => "f{$i}.js",
+                'sha256' => str_repeat('a', 64), 'size' => 1, 'git_blob_sha' => str_repeat('b', 40),
+                'change_type' => 'added', 'review_status' => $status, 'created_at' => now(), 'updated_at' => now(),
+            ]);
+        }
+
+        return $version;
+    };
+    $withFiles(GameVersion::factory()->awaitingFileReview()->create(), ['approved', 'approved']);   // pronta
+    $withFiles(GameVersion::factory()->awaitingFileReview()->create(), ['approved', 'pending']);    // falta arquivo
+    $withFiles(GameVersion::factory()->awaitingFileReview()->create(), []);                         // sem arquivos
+    $withFiles(GameVersion::factory()->published()->create(), ['approved']);                        // já publicada
+
+    $this->actingAs(User::factory()->admin()->create())->getJson('/api/v1/admin/versions/summary')
+        ->assertOk()
+        ->assertJsonPath('meta.ready_to_publish', 1)
+        ->assertJsonPath('data.awaiting_file_review.total', 3);
+});
+
+describe('filtros das filas (Fase 7)', function (): void {
+    it('busca pelo nome ou slug do jogo e pelo nome de quem pediu, sem tratar % e _ como curingas', function (): void {
+        $admin = User::factory()->admin()->create();
+        $snake = GameVersion::factory()->for(Game::factory()->create(['name' => 'Snake', 'slug' => 'snake']))->create();
+        $pong = GameVersion::factory()->for(Game::factory()->create(['name' => 'Pong', 'slug' => 'pong-100']))->create();
+        $byAda = GameVersion::factory()->for(Game::factory()->create(['name' => 'Tetris', 'slug' => 'tetris']))
+            ->create(['requested_by_id' => User::factory()->developer()->create(['name' => 'Ada Lovelace'])->id]);
+
+        $ids = fn (string $search): array => collect($this->actingAs($admin)->getJson('/api/v1/admin/versions?status=import_requested&search='.urlencode($search))->assertOk()->json('data'))->pluck('id')->all();
+
+        expect($ids('SNA'))->toBe([$snake->id])
+            ->and($ids('pong'))->toBe([$pong->id])
+            ->and($ids('lovelace'))->toBe([$byAda->id])
+            ->and($ids('%'))->toBe([])
+            ->and($ids('p_ng'))->toBe([]);
+    });
+
+    it('lista só as prontas para publicar com ready=1', function (): void {
+        $admin = User::factory()->admin()->create();
+        $row = fn (GameVersion $v, string $status) => DB::table('version_files')->insert([
+            'id' => (string) Str::ulid(), 'game_version_id' => $v->id, 'path' => 'index.html', 'sha256' => str_repeat('a', 64), 'size' => 1,
+            'git_blob_sha' => str_repeat('b', 40), 'change_type' => 'added', 'review_status' => $status, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $ready = GameVersion::factory()->awaitingFileReview()->create();
+        $row($ready, 'approved');
+        $row(GameVersion::factory()->awaitingFileReview()->create(), 'pending');
+
+        $this->actingAs($admin)->getJson('/api/v1/admin/versions?status=awaiting_file_review&ready=1')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $ready->id);
+    });
+
+    it('valida os filtros', function (): void {
+        $this->actingAs(User::factory()->admin()->create())->getJson('/api/v1/admin/versions?search='.str_repeat('a', 101).'&ready=talvez')
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['search', 'ready']);
+    });
 });

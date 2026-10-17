@@ -73,6 +73,10 @@ export function AdminGamePage() {
         )}
       </section>
 
+      <Link to={`/admin/auditoria?game_id=${encodeURIComponent(g.id)}`} className="text-sm text-emerald-400 hover:underline">
+        Linha do tempo de auditoria do jogo
+      </Link>
+
       <section aria-label="Histórico de versões" className="space-y-3">
         <h2 className="text-lg font-semibold">Histórico de versões</h2>
         {versions.isError && <Alert tone="error">{errorMessage(versions.error)}</Alert>}

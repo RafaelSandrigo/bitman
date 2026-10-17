@@ -151,13 +151,21 @@ removem (`PublicationTest`). O E2E num navegador de verdade (Playwright) ficou p
 exatamente um registro: `ScoreConcurrencyTest` dispara 6 processos (`pcntl_fork`), cada um com a própria conexão ao
 PostgreSQL, no mesmo instante. ✅ A limitação dos scores aparece na UI do ranking (`GamePlayer.test.tsx`).
 
-## Fase 7 — Painel administrativo e auditoria ⬜
+## Fase 7 — Painel administrativo e auditoria ✅
 
-- Painel com filas por estado (Portão 0, 1, 2, prontas para publicar) e filtros.
-- Linha do tempo de auditoria por jogo, versão e usuário, respondendo todas as
-  perguntas da seção *Auditoria* do [contexto](contexto-do-produto.md#auditoria).
+- ✅ **Painel** (`/admin`, página inicial da administração): cards das filas — Portão 0, Portão 1, Portão 2, prontas
+  para publicar e paradas (busca falhou ou reprovada) — com o total e as versões novas, e link direto para cada fila.
+  `GET /admin/versions/summary` passou a trazer `meta.ready_to_publish` (escopo `GameVersion::readyToPublish`, que espelha
+  `allFilesApproved()`).
+- ✅ **Filtros das filas** em Admin › Versões: busca por jogo, slug ou solicitante (`search`, sem curingas do `LIKE`) e
+  "só as prontas para publicar" (`ready=1`). Fila, busca e recorte ficam na URL.
+- ✅ **Linhas do tempo de auditoria** por jogo (`game_id`, que inclui as versões e os scores dele) e por usuário
+  (`user_id`, o que aconteceu com ele e o que ele fez), além de filtro por ação e por ator. Cada entrada liga à tela do
+  jogo ou da versão. Detalhes e o mapa pergunta → resposta em [arquitetura.md](arquitetura.md#consulta-da-auditoria).
 
-**Aceite:** cada pergunta da lista de auditoria tem uma tela ou consulta que a responde.
+**Aceite:** ✅ cada pergunta da seção *Auditoria* do [contexto](contexto-do-produto.md#auditoria) é respondida pela
+linha do tempo do jogo, e `EndToEndPublicationTest` confere as respostas (quem, quando, URL, commit, arquivo, hash, versão
+e URI) depois do fluxo completo.
 
 ## Fase 8 — Endurecimento e implantação ⬜
 

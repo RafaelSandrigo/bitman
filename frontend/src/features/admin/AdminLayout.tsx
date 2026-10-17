@@ -7,6 +7,9 @@ export function AdminLayout() {
   return (
     <div className="space-y-6">
       <nav aria-label="Administração" className="flex gap-2 border-b border-slate-800 pb-3">
+        <NavLink to="/admin" end className={linkClass}>
+          Painel
+        </NavLink>
         <NavLink to="/admin/submissoes" className={linkClass}>
           Submissões
         </NavLink>

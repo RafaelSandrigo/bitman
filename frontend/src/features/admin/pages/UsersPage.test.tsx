@@ -77,7 +77,7 @@ describe('UsersPage', () => {
     const row = screen.getByRole('row', { name: /ada/i })
     expect(within(row).getByRole('link', { name: 'Histórico' })).toHaveAttribute(
       'href',
-      `/admin/auditoria?subject_type=user&subject_id=${ada.id}`,
+      `/admin/auditoria?user_id=${ada.id}`,
     )
   })
 })

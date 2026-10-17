@@ -156,4 +156,27 @@ describe('VersionsPage', () => {
     await waitFor(() => expect(queues.seen).toEqual([{ versions: [{ id: fresh.id, status: 'import_requested' }] }]))
     expect(within(item).getByText('Novo')).toBeInTheDocument()
   })
+
+  it('busca por jogo ou solicitante e filtra as prontas para publicar, pela URL', async () => {
+    const requests: string[] = []
+    server.use(
+      ...sessionHandlers(makeAdmin()).handlers,
+      ...queueHandlers().handlers,
+      http.get('/api/v1/admin/versions', ({ request }) => {
+        requests.push(new URL(request.url).searchParams.toString())
+        return HttpResponse.json(page([]))
+      }),
+    )
+    const { user, router } = renderAt('/admin/versoes?estado=awaiting_file_review&prontas=1')
+
+    expect(await screen.findByRole('checkbox', { name: 'Só as prontas para publicar' })).toBeChecked()
+    await waitFor(() => expect(requests).toContain('status=awaiting_file_review&page=1&ready=1'))
+
+    await user.click(screen.getByRole('checkbox', { name: 'Só as prontas para publicar' }))
+    await user.type(screen.getByRole('searchbox', { name: 'Buscar por jogo ou solicitante' }), 'snake')
+    await user.click(screen.getByRole('button', { name: 'Buscar' }))
+
+    await waitFor(() => expect(requests.at(-1)).toBe('status=awaiting_file_review&page=1&search=snake'))
+    expect(router.state.location.search).toBe('?estado=awaiting_file_review&busca=snake')
+  })
 })

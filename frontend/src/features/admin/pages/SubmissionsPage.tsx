@@ -107,7 +107,7 @@ export function SubmissionsPage() {
                     <Link to={`/admin/jogos/${encodeURIComponent(game.id)}`} className="text-emerald-400 hover:underline">
                       Jogo e versões
                     </Link>
-                    <Link to={`/admin/auditoria?subject_type=game&subject_id=${encodeURIComponent(game.id)}`} className="text-emerald-400 hover:underline">
+                    <Link to={`/admin/auditoria?game_id=${encodeURIComponent(game.id)}`} className="text-emerald-400 hover:underline">
                       Histórico
                     </Link>
                   </div>

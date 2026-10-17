@@ -73,13 +73,13 @@ export function makeVersionFile(overrides: Partial<VersionFile> = {}): VersionFi
 }
 
 /** Contadores das filas (todos zerados, salvo os informados) e o registro das marcações de "visto". */
-export function queueHandlers(counts: Partial<VersionSummary> = {}) {
+export function queueHandlers(counts: Partial<VersionSummary> = {}, readyToPublish = 0) {
   const seen: unknown[] = []
   const summary = Object.fromEntries(versionStatuses.map((status) => [status, counts[status] ?? { total: 0, new: 0 }]))
   return {
     seen,
     handlers: [
-      http.get('/api/v1/admin/versions/summary', () => HttpResponse.json({ data: summary })),
+      http.get('/api/v1/admin/versions/summary', () => HttpResponse.json({ data: summary, meta: { ready_to_publish: readyToPublish } })),
       http.post('/api/v1/admin/versions/seen', async ({ request }) => {
         seen.push(await request.json())
         return new HttpResponse(null, { status: 204 })

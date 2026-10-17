@@ -43,12 +43,17 @@ const AuditPageSchema = z.object({
 })
 export type AuditPage = z.infer<typeof AuditPageSchema>
 
-export type AuditFilter = { subjectType: string; subjectId: string }
+/** `gameId` e `userId` pedem a linha do tempo inteira; os demais filtram entradas avulsas. */
+export type AuditFilter = { subjectType: string; subjectId: string; action: string; actorId: string; gameId: string; userId: string }
 
 export function listAuditEntries(filter: AuditFilter, cursor: string | null): Promise<AuditPage> {
   const query = new URLSearchParams()
   if (filter.subjectType) query.set('subject_type', filter.subjectType)
   if (filter.subjectId) query.set('subject_id', filter.subjectId)
+  if (filter.action) query.set('action', filter.action)
+  if (filter.actorId) query.set('actor_id', filter.actorId)
+  if (filter.gameId) query.set('game_id', filter.gameId)
+  if (filter.userId) query.set('user_id', filter.userId)
   if (cursor) query.set('cursor', cursor)
   return apiGet(`/api/v1/admin/audit-entries?${query}`, AuditPageSchema)
 }

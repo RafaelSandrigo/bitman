@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 use App\Modules\Audit\Domain\AuditEntry;
 use App\Modules\Audit\Domain\AuditRecord;
+use App\Modules\Catalog\Domain\Game;
 use App\Modules\Identity\Application\Actions\PromoteToDeveloper;
 use App\Modules\Identity\Domain\User;
+use App\Modules\Versioning\Domain\GameVersion;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
@@ -88,4 +90,78 @@ it('valida os filtros da consulta', function (): void {
     $this->actingAs($admin)->getJson('/api/v1/admin/audit-entries?subject_type=User;DROP')
         ->assertUnprocessable()
         ->assertJsonValidationErrors('subject_type');
+});
+
+describe('linhas do tempo (Fase 7)', function (): void {
+    function auditAbout(string $subjectType, string $subjectId, string $action, ?string $actorId, string $at, array $context = []): AuditEntry
+    {
+        $entry = AuditEntry::fromRecord(new AuditRecord($action, $subjectType, $subjectId, $actorId, $context), CarbonImmutable::parse($at));
+        $entry->save();
+
+        return $entry;
+    }
+
+    it('a linha do tempo do jogo reúne o jogo, as versões dele e os scores dele, e nada de outros jogos', function (): void {
+        $admin = User::factory()->admin()->create();
+        $game = Game::factory()->create();
+        $other = Game::factory()->create();
+        $version = GameVersion::factory()->create(['game_id' => $game->id]);
+        $otherVersion = GameVersion::factory()->create(['game_id' => $other->id]);
+
+        $submitted = auditAbout('game', $game->id, 'catalog.game-submitted', $game->owner_id, '2026-10-01 10:00:00');
+        $fetched = auditAbout('game_version', $version->id, 'versioning.repository-fetched', null, '2026-10-01 11:00:00');
+        $file = auditAbout('game_version', $version->id, 'versioning.file-approved', $admin->id, '2026-10-01 12:00:00', ['path' => 'index.html']);
+        $score = auditAbout('score', '01JSCORE', 'play.score-hidden', $admin->id, '2026-10-01 13:00:00', ['game_id' => $game->id]);
+        auditAbout('game', $other->id, 'catalog.game-submitted', null, '2026-10-01 10:30:00');
+        auditAbout('game_version', $otherVersion->id, 'versioning.repository-fetched', null, '2026-10-01 11:30:00');
+        auditAbout('score', '01JOTHER', 'play.score-hidden', $admin->id, '2026-10-01 13:30:00', ['game_id' => $other->id]);
+
+        $this->actingAs($admin)->getJson("/api/v1/admin/audit-entries?game_id={$game->id}")
+            ->assertOk()
+            ->assertJsonCount(4, 'data')
+            ->assertJsonPath('data.0.id', $score->id)
+            ->assertJsonPath('data.1.id', $file->id)
+            ->assertJsonPath('data.2.id', $fetched->id)
+            ->assertJsonPath('data.3.id', $submitted->id);
+    });
+
+    it('a linha do tempo do usuário traz o que aconteceu com ele e o que ele fez', function (): void {
+        $admin = User::factory()->admin()->create();
+        $dev = User::factory()->developer()->create();
+        $about = auditAbout('user', $dev->id, 'identity.role-granted', $admin->id, '2026-10-01 10:00:00');
+        $did = auditAbout('game', '01JGAME', 'catalog.game-submitted', $dev->id, '2026-10-01 11:00:00');
+        auditAbout('game', '01JGAME', 'catalog.slug-changed', $admin->id, '2026-10-01 12:00:00');
+
+        $this->actingAs($admin)->getJson("/api/v1/admin/audit-entries?user_id={$dev->id}")
+            ->assertOk()
+            ->assertJsonCount(2, 'data')
+            ->assertJsonPath('data.0.id', $did->id)
+            ->assertJsonPath('data.1.id', $about->id);
+    });
+
+    it('filtra por ação e por ator', function (): void {
+        $admin = User::factory()->admin()->create();
+        $other = User::factory()->admin()->create();
+        $match = auditAbout('game_version', '01JV1', 'versioning.version-rejected', $admin->id, '2026-10-01 10:00:00');
+        auditAbout('game_version', '01JV1', 'versioning.commit-approved', $admin->id, '2026-10-01 11:00:00');
+        auditAbout('game_version', '01JV2', 'versioning.version-rejected', $other->id, '2026-10-01 12:00:00');
+
+        $this->actingAs($admin)->getJson("/api/v1/admin/audit-entries?action=versioning.version-rejected&actor_id={$admin->id}")
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $match->id);
+    });
+
+    it('valida os novos filtros', function (): void {
+        $admin = User::factory()->admin()->create();
+
+        $this->actingAs($admin)->getJson('/api/v1/admin/audit-entries?game_id=x;DROP&action=A B&actor_id=../etc&user_id=%27')
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['game_id', 'action', 'actor_id', 'user_id']);
+    });
+
+    it('quem não tem audit.view não consulta (I12)', function (): void {
+        $this->actingAs(User::factory()->developer()->create())->getJson('/api/v1/admin/audit-entries?game_id=01JAAAAAAAAAAAAAAAAAAAAAAA')
+            ->assertForbidden();
+    });
 });

@@ -13,18 +13,17 @@ function page(games: ReturnType<typeof makeGame>[]) {
 }
 
 describe('SubmissionsPage', () => {
-  it('é a página inicial da administração e mostra cada submissão com o dono', async () => {
+  it('mostra cada submissão com o dono', async () => {
     const game = makeGame()
     server.use(...sessionHandlers(makeAdmin()).handlers, http.get('/api/v1/admin/submissions', () => HttpResponse.json(page([game]))))
-    const { router } = renderAt('/admin')
+    renderAt('/admin/submissoes')
 
     const item = await screen.findByRole('listitem', { name: 'Snake' })
-    expect(router.state.location.pathname).toBe('/admin/submissoes')
     expect(within(item).getByText('Ada (ada@example.com)')).toBeInTheDocument()
     expect(within(item).getByText('snake')).toBeInTheDocument()
     expect(within(item).getByRole('link', { name: 'Histórico' })).toHaveAttribute(
       'href',
-      `/admin/auditoria?subject_type=game&subject_id=${game.id}`,
+      `/admin/auditoria?game_id=${game.id}`,
     )
   })
 

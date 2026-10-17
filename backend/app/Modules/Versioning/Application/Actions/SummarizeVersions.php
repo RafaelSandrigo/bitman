@@ -38,4 +38,12 @@ final readonly class SummarizeVersions
 
         return $summary;
     }
+
+    /** Em revisão de arquivos e com todos eles aprovados: só falta publicar. */
+    public function readyToPublish(User $actor): int
+    {
+        $this->gate->forUser($actor)->authorize(Permission::AuthorizeImports->value);
+
+        return GameVersion::query()->readyToPublish()->count();
+    }
 }

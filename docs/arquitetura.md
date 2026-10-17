@@ -168,6 +168,31 @@ Http ──► Application ──► Domain ◄── Infrastructure
 | IDs | ULID nas entidades expostas; UUID v4 em `publicId` do artefato | Não enumeráveis e ordenáveis |
 | API | JSON REST, `/api/v1`, respostas com API Resources. OpenAPI gerada a partir do código (Scramble) | Contrato documentado sem manutenção manual |
 
+### Consulta da auditoria
+
+`GET /api/v1/admin/audit-entries` (permissão `audit.view`) aceita filtros combináveis: `subject_type` + `subject_id`,
+`action`, `actor_id` e as duas **linhas do tempo**:
+
+- `game_id`: o jogo, todas as versões dele (`game_version`) e os scores dele (`score`, pelo `game_id` do contexto);
+- `user_id`: o que aconteceu com o usuário (`user`) e tudo o que ele fez como ator.
+
+Os filtros são validados (`alpha_dash` ASCII e `regex` na ação) e viram parâmetros de consulta, nunca texto de SQL.
+Cada pergunta da seção *Auditoria* do [contexto](contexto-do-produto.md#auditoria) tem resposta na linha do tempo do
+jogo (`/admin/auditoria?game_id=…`, também ligada da página do jogo e das submissões):
+
+| Pergunta | Onde está |
+|---|---|
+| Quem submeteu, quem informou a URL e qual URL | `catalog.game-submitted`: ator e `repository_url` |
+| Quem autorizou ou rejeitou a execução Git | `versioning.import-authorized` / `import-rejected`: ator, data e motivo |
+| Quando foi o fetch e qual commit | `versioning.repository-fetched`: data e `commit` |
+| Quem aprovou o commit | `versioning.commit-approved` / `commit-rejected` |
+| Quais arquivos foram encontrados | Detalhe da versão (relatório e arquivos); cada decisão em `versioning.file-*` |
+| Qual arquivo, quem aprovou, com qual hash e quando | `versioning.file-approved`: `path`, `sha256`, ator e data |
+| Quem rejeitou o quê | `versioning.*-rejected`, com motivo; filtro por ação e por ator |
+| Qual versão foi publicada e qual URI | `versioning.version-published`: `number`, `public_id` (a URI) e o hash de cada arquivo |
+
+O teste `EndToEndPublicationTest` responde cada uma dessas perguntas pela API, a partir do fluxo completo.
+
 ### API e autenticação
 
 - Rotas em `/api/v1`. Cada módulo declara as suas em `Http/routes.php` (públicas) e `Http/admin-routes.php`

@@ -17,6 +17,8 @@ final class ListVersionsRequest extends FormRequest
             'status' => ['nullable', Rule::enum(VersionStatus::class)],
             'page' => ['nullable', 'integer', 'min:1'],
             'game_id' => ['nullable', 'string', 'ulid'],
+            'search' => ['nullable', 'string', 'max:100'],
+            'ready' => ['nullable', 'boolean'],
         ];
     }
 
@@ -25,6 +27,19 @@ final class ListVersionsRequest extends FormRequest
         $gameId = $this->validated('game_id');
 
         return is_string($gameId) ? strtolower($gameId) : null;
+    }
+
+    public function search(): ?string
+    {
+        $search = $this->validated('search');
+
+        return is_string($search) && trim($search) !== '' ? trim($search) : null;
+    }
+
+    /** Só as versões que esperam apenas a publicação. */
+    public function readyToPublish(): bool
+    {
+        return $this->boolean('ready');
     }
 
     public function status(): ?VersionStatus

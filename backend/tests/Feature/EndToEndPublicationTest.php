@@ -82,4 +82,25 @@ it('do envio pelo developer até o jogo publicado e jogável', function (): void
         'versioning.file-approved',
         'versioning.version-published',
     ])->and($gameId)->toBeString();
+
+    // Fase 7: a linha do tempo do jogo responde as perguntas da seção Auditoria do contexto do produto.
+    $timeline = collect($this->actingAs($admin)->getJson("/api/v1/admin/audit-entries?game_id={$gameId}")->assertOk()->json('data'))
+        ->reverse()->values();
+    $first = fn (string $action): array => $timeline->firstWhere('action', $action) ?? throw new RuntimeException("sem {$action}");
+
+    $submitted = $first('catalog.game-submitted');
+    expect($submitted['actor']['id'])->toBe($developer->id)                                    // quem submeteu / informou a URL
+        ->and($submitted['context']['repository_url'])->toBe('https://github.com/ada/snake');  // qual URL
+    expect($first('versioning.import-authorized')['actor']['id'])->toBe($admin->id);           // quem autorizou a execução Git
+    $fetched = $first('versioning.repository-fetched');
+    expect($fetched['occurred_at'])->toBeString()                                              // quando foi o fetch
+        ->and($fetched['context']['commit'])->toMatch('/^[0-9a-f]{40}$/');                     // qual commit
+    expect($first('versioning.commit-approved')['actor']['id'])->toBe($admin->id);             // quem aprovou o commit
+    $approvals = $timeline->where('action', 'versioning.file-approved');
+    expect($approvals->pluck('context.path')->sort()->values()->all())->toBe(collect(array_keys(Snapshots::gameFiles()))->sort()->values()->all())
+        ->and($approvals->every(fn (array $e): bool => $e['actor']['id'] === $admin->id && preg_match('/^[0-9a-f]{64}$/', $e['context']['sha256']) === 1))->toBeTrue(); // arquivo, quem, hash e quando
+    $published = $first('versioning.version-published');
+    expect($published['context']['public_id'])->toBe($publicId)                                // qual versão e qual URI
+        ->and($published['context']['number'])->toBe(1)
+        ->and($published['actor']['id'])->toBe($admin->id);
 });

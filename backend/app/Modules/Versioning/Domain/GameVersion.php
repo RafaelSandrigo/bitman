@@ -33,7 +33,9 @@ use App\Shared\Domain\Git\RepositoryUrl;
 use App\Shared\Domain\RecordsDomainEvents;
 use Carbon\CarbonImmutable;
 use Database\Factories\GameVersionFactory;
+use Illuminate\Database\Eloquent\Attributes\Scope;
 use Illuminate\Database\Eloquent\Attributes\UseFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -355,6 +357,22 @@ final class GameVersion extends Model implements EmitsDomainEvents
     public function files(): HasMany
     {
         return $this->hasMany(VersionFile::class)->orderBy('path');
+    }
+
+    /**
+     * Em revisão de arquivos e com todos eles aprovados: só falta publicar. Espelha `allFilesApproved()`
+     * para consultar a fila sem carregar os arquivos de cada versão.
+     *
+     * @param  Builder<GameVersion>  $query
+     */
+    #[Scope]
+    protected function readyToPublish(Builder $query): void
+    {
+        $query->where('status', VersionStatus::AwaitingFileReview)
+            ->whereExists(fn ($files) => $files->selectRaw('1')->from('version_files')->whereColumn('version_files.game_version_id', 'game_versions.id'))
+            ->whereNotExists(fn ($files) => $files->selectRaw('1')->from('version_files')
+                ->whereColumn('version_files.game_version_id', 'game_versions.id')
+                ->where('version_files.review_status', '!=', FileReviewStatus::Approved->value));
     }
 
     /**

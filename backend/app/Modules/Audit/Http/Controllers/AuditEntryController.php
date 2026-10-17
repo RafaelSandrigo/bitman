@@ -15,6 +15,6 @@ final class AuditEntryController
 {
     public function index(ListAuditEntriesRequest $request, #[CurrentUser] User $actor, ListAuditEntries $list): AnonymousResourceCollection
     {
-        return AuditEntryResource::collection($list($actor, $request->subjectType(), $request->subjectId()));
+        return AuditEntryResource::collection($list($actor, $request->filter()));
     }
 }

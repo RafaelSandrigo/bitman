@@ -23,13 +23,16 @@ final class VersionController
 {
     public function index(ListVersionsRequest $request, #[CurrentUser] User $actor, ListVersions $listVersions): AnonymousResourceCollection
     {
-        return VersionResource::collection($listVersions($actor, $request->status(), $request->gameId()));
+        return VersionResource::collection($listVersions($actor, $request->status(), $request->gameId(), $request->search(), $request->readyToPublish()));
     }
 
-    /** Contadores das filas: total e "novos" por estado. */
+    /** Contadores das filas: total e "novos" por estado, e quantas versões só esperam a publicação. */
     public function summary(#[CurrentUser] User $actor, SummarizeVersions $summarizeVersions): JsonResponse
     {
-        return response()->json(['data' => $summarizeVersions($actor)]);
+        return response()->json([
+            'data' => $summarizeVersions($actor),
+            'meta' => ['ready_to_publish' => $summarizeVersions->readyToPublish($actor)],
+        ]);
     }
 
     public function seen(MarkVersionsSeenRequest $request, #[CurrentUser] User $actor, MarkVersionsSeen $markVersionsSeen): Response
