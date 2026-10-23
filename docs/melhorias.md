@@ -15,7 +15,6 @@ anotado no commit.
 | M5 | Dividir o bundle do frontend | O build avisa que o chunk principal passou de 500 kB | `import()` dinâmico por área (admin, desenvolvedor) nas rotas | Build da Fase 3 |
 | M6 | Realce de sintaxe no Portão 2 | O visualizador mostra texto puro, com números de linha | Tokenizar no cliente e renderizar os tokens como elementos React (nunca HTML gerado por biblioteca), mantendo J5 | Fase 4 |
 | M8 | Status `rejected` do jogo | `dominio.md` prevê o jogo `rejected` quando a primeira versão é rejeitada, mas o jogo fica `submitted`; o dono vê o estado pela versão | Decidir se o status do jogo é necessário (talvez removê-lo) ou implementar a transição, com volta ao reenviar | Fase 4 |
-| M9 | Aprovar todos os arquivos de uma vez | Cada arquivo exige abrir e aprovar separadamente (ADR 0006) | Manter a abertura obrigatória, mas permitir aprovar os já abertos num só passo | Fase 4 |
 | M11 | E2E num navegador de verdade | O aceite da Fase 5 é coberto pela API (`EndToEndPublicationTest`) e por testes de componente do iframe; nenhum teste abre o jogo num navegador real | Playwright num container descartável, contra uma stack de teste, conferindo iframe, CSP e headers | Fase 5 |
 | M13 | Endpoint de jogos do admin | A aba Jogos usa `GET /admin/submissions?status=…`, nome herdado da fila de submissões | Renomear para `GET /admin/games` mantendo o filtro | Fase 5 |
 

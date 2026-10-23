@@ -123,6 +123,47 @@ describe('VersionPage', () => {
       })
     }
 
+    it('M9: aprova num passo os arquivos já abertos, cada um com o hash exibido', async () => {
+      const js = makeVersionFile({ path: 'game.js', sha256: 'a'.repeat(64) })
+      const css = makeVersionFile({ path: 'style.css', sha256: 'b'.repeat(64) })
+      const html = makeVersionFile({ path: 'index.html', sha256: 'c'.repeat(64) })
+      const version = makeVersionDetail({
+        status: 'awaiting_file_review',
+        commit_decision: { decided_by: { id: '1', name: 'Rafael' }, decided_at: '2026-10-12T13:00:00+00:00', rejection_reason: null },
+        files: [js, css, html],
+      })
+      const bodies: unknown[] = []
+      server.use(
+        ...sessionHandlers(makeAdmin()).handlers,
+        http.get(`/api/v1/admin/versions/${version.id}`, () => HttpResponse.json({ data: version })),
+        http.get(`/api/v1/admin/versions/${version.id}/files/:fileId/content`, ({ params }) => {
+          const file = [js, css, html].find((f) => f.id === params.fileId)!
+          return HttpResponse.json({ data: { id: file.id, path: file.path, sha256: file.sha256, size: 1, content: 'x' } })
+        }),
+        http.post(`/api/v1/admin/versions/${version.id}/files/:fileId/review`, async ({ request, params }) => {
+          bodies.push({ file: params.fileId, ...((await request.json()) as object) })
+          const { game: _g, requested_by: _r, import_decision: _i, commit_decision: _c, rejection: _x, report: _p, files: _f, ...data } = version
+          return HttpResponse.json({ data })
+        }),
+      )
+      const { user } = renderAt(`/admin/versoes/${version.id}`)
+
+      const jsCard = await screen.findByRole('listitem', { name: 'game.js' })
+      expect(screen.queryByRole('button', { name: /arquivos abertos/ })).not.toBeInTheDocument()
+      await user.click(within(jsCard).getByRole('button', { name: 'Ver conteúdo' }))
+      await user.click(within(screen.getByRole('listitem', { name: 'style.css' })).getByRole('button', { name: 'Ver conteúdo' }))
+
+      await user.click(await screen.findByRole('button', { name: 'Aprovar os 2 arquivos abertos' }))
+
+      await waitFor(() =>
+        expect(bodies).toEqual([
+          { file: js.id, decision: 'approved', sha256: js.sha256 },
+          { file: css.id, decision: 'approved', sha256: css.sha256 },
+        ]),
+      )
+      expect(screen.getByText(/Os outros continuam precisando ser abertos/)).toBeInTheDocument()
+    })
+
     it('mostra o conteúdo hostil como texto e aprova o hash exibido (J5, I5)', async () => {
       const file = makeVersionFile()
       const version = reviewing(file)

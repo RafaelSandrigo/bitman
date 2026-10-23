@@ -198,6 +198,7 @@ e URI) depois do fluxo completo.
 | M14 | `bitman:expire-sessions` a cada 15 minutos: sessões vencidas viram `expired` (log `play.sessions_expired` com a contagem) e partidas de visitante sem score para salvar são apagadas | [dominio.md](dominio.md#gamesession-e-score-play) |
 | M1 | Campo opcional **Branch ou tag** no reenvio, validado pelo `GitRef` e auditado no `versioning.import-requested`; vale só para a versão nova (a ref do jogo não muda) | [arquitetura.md](arquitetura.md#ingestão-portão-0--portão-1) |
 | M2 | **Histórico de versões** do jogo para o dono (`GET /me/games/{id}/versions`, 404 para jogo de outra pessoa), com estado e motivo de cada versão | `MyGameHistoryPage.tsx` |
+| M9 | **Aprovar os N arquivos abertos** no Portão 2: só os já abertos com o hash conferido, uma decisão por arquivo (I5) | [ADR 0006](adr/0006-aprovacao-vinculada-ao-hash.md) |
 
 ## Checklist de lançamento
 

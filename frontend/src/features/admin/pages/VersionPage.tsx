@@ -7,6 +7,7 @@ import { Button } from '../../../shared/ui/Button'
 import { formatSize } from '../format'
 import { ImportDecision, NewImportButton } from '../ImportDecision'
 import { RejectWithReason } from '../RejectWithReason'
+import { ApproveOpenedFiles } from '../ApproveOpenedFiles'
 import { CommitDecision, FileCard } from '../Review'
 import { useMarkSeen } from '../useMarkSeen'
 import { useRefreshVersions } from '../useRefreshVersions'
@@ -139,6 +140,7 @@ function FilesSection({ version }: { version: VersionDetail }) {
           ))}
         </ul>
       )}
+      {reviewing && <ApproveOpenedFiles versionId={version.id} files={version.files} />}
       {reviewing && approved === version.files.length && version.files.length > 0 && <PublishPanel versionId={version.id} />}
       {reviewing && (
         <RejectWithReason label="Rejeitar versão" reject={(reason) => rejectVersion(version.id, reason)} onDone={refresh} />
