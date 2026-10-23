@@ -30,6 +30,13 @@ function Intro({ firstGame }: { firstGame: PublicGame | undefined }) {
           Ver todos os jogos
         </a>
       </div>
+      <p className="text-sm text-slate-400">
+        Faz jogos para a web?{' '}
+        <Link to="/seja-desenvolvedor" className="font-semibold text-emerald-400 hover:underline">
+          Seja Desenvolvedor
+        </Link>{' '}
+        e publique o seu.
+      </p>
     </section>
   )
 }

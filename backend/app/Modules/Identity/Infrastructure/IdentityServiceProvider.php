@@ -57,6 +57,8 @@ final class IdentityServiceProvider extends ServiceProvider
             ];
         });
 
+        // M18: pedidos para ser developer (um pendente por vez; o limite cobre os repetidos após rejeição).
+        RateLimiter::for('developer-requests', fn (Request $request): Limit => Limit::perHour(5)->by('developer-requests|'.$request->user()?->getAuthIdentifier()));
         RateLimiter::for('auth', fn (Request $request): Limit => Limit::perMinute(30)->by('auth|'.$request->ip()));
     }
 

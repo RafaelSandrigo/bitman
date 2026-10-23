@@ -188,6 +188,7 @@ e URI) depois do fluxo completo.
 | M19 | Apresentação do Bitman na home, antes da lista, com o CTA **Jogar agora** (primeiro jogo, ou a lista se não houver nenhum) | `HomePage.tsx` |
 | M20 | Score sinalizado fica fora do ranking (e do p99) até o admin decidir: **Manter no ranking** (`play.score-kept`) ou ocultar. A aba padrão da moderação passa a ser **Em revisão** | [dominio.md](dominio.md#gamesession-e-score-play), S2 |
 | M21 | Card **Scores em revisão** no painel (`GET /admin/scores/summary`) e e-mail a quem tem `scores.moderate` quando um score é sinalizado, no máximo um por jogo por hora. O e-mail não cita o jogador | `NotifyModeratorsOfFlaggedScore`, S2 |
+| M18 | **Seja Desenvolvedor**: no menu e na home, o usuário com e-mail confirmado pede a role `developer` com nome, perfil do GitHub e apresentação. O admin aprova ou rejeita com motivo em **Pedidos de dev**, com card no painel. Tudo auditado | [dominio.md](dominio.md#developerrequest-identity), A11 |
 
 ## Checklist de lançamento
 
@@ -215,7 +216,7 @@ validação autoritativa de score; multiplayer; comentários e avaliações.
 |---|---|
 | Um admin pode aprovar um jogo do qual é dono? | **Sim.** A ação é auditada normalmente |
 | O ranking considera todas as versões ou só a atual? | **Todas**, exibindo a versão de cada score |
-| Quem pode se cadastrar? | **Qualquer pessoa**, como `player`. Só o admin promove um usuário a `developer` |
+| Quem pode se cadastrar? | **Qualquer pessoa**, como `player`. Só o admin promove um usuário a `developer`, diretamente ou aprovando o pedido "Seja Desenvolvedor" (M18) |
 | Score máximo | Não há limite por jogo. O teto técnico é `9.007.199.254.740.991` (ver [dominio.md](dominio.md#score-limite-técnico)) |
 | Domínio de produção do hub | `bitman.sandrigo.com.br` |
 | Domínio da origem de jogos | `bitman-games.sandrigo.com.br`: subdomínio, com o risco aceito documentado no [ADR 0004](adr/0004-isolamento-dos-jogos.md) |

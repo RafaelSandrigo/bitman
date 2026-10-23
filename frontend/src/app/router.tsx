@@ -3,6 +3,7 @@ import { AdminLayout } from '../features/admin/AdminLayout'
 import { AdminGamePage } from '../features/admin/pages/AdminGamePage'
 import { AuditPage } from '../features/admin/pages/AuditPage'
 import { DashboardPage } from '../features/admin/pages/DashboardPage'
+import { DeveloperRequestsPage } from '../features/admin/pages/DeveloperRequestsPage'
 import { GamesPage } from '../features/admin/pages/GamesPage'
 import { ScoresPage } from '../features/admin/pages/ScoresPage'
 import { SubmissionsPage } from '../features/admin/pages/SubmissionsPage'
@@ -16,6 +17,7 @@ import { RegisterPage } from '../features/auth/pages/RegisterPage'
 import { ResetPasswordPage } from '../features/auth/pages/ResetPasswordPage'
 import { VerifyEmailPage } from '../features/auth/pages/VerifyEmailPage'
 import { GamePage } from '../features/catalog/pages/GamePage'
+import { BecomeDeveloperPage } from '../features/developer/pages/BecomeDeveloperPage'
 import { HomePage } from '../features/catalog/pages/HomePage'
 import { MyScoresPage } from '../features/play/pages/MyScoresPage'
 import { MyGamesPage } from '../features/submissions/pages/MyGamesPage'
@@ -40,7 +42,13 @@ const routes: RouteObject[] = [
       },
       { element: <GuestOnly home="/verificar-email" />, children: [{ path: 'cadastro', element: <RegisterPage /> }] },
       { path: 'verificar-email', element: <VerifyEmailPage /> },
-      { element: <RequireAuth />, children: [{ path: 'minhas-partidas', element: <MyScoresPage /> }] },
+      {
+        element: <RequireAuth />,
+        children: [
+          { path: 'minhas-partidas', element: <MyScoresPage /> },
+          { path: 'seja-desenvolvedor', element: <BecomeDeveloperPage /> },
+        ],
+      },
       {
         path: 'desenvolvedor',
         element: (
@@ -71,6 +79,7 @@ const routes: RouteObject[] = [
               { path: 'jogos/:id', element: <AdminGamePage /> },
               { path: 'scores', element: <ScoresPage /> },
               { path: 'usuarios', element: <UsersPage /> },
+              { path: 'desenvolvedores', element: <DeveloperRequestsPage /> },
               { path: 'auditoria', element: <AuditPage /> },
             ],
           },

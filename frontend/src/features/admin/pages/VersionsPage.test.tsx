@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { renderAt } from '../../../test/render'
 import { server } from '../../../test/server'
 import { makeAdmin, sessionHandlers } from '../../../test/session'
-import { makeVersion, queueHandlers } from '../../../test/versions'
+import { makeVersion, dashboardSummaryHandlers, queueHandlers } from '../../../test/versions'
 import type { Version } from '../versions'
 
 function page(versions: Version[]) {
@@ -121,7 +121,7 @@ describe('VersionsPage', () => {
 
   it('o menu da administração leva às versões', async () => {
     server.use(...sessionHandlers(makeAdmin()).handlers,
-      ...queueHandlers().handlers, http.get('/api/v1/admin/submissions', () => HttpResponse.json({ data: [], meta: { current_page: 1, last_page: 1, total: 0 } })), http.get('/api/v1/admin/versions', () => HttpResponse.json(page([]))))
+      ...queueHandlers().handlers, ...dashboardSummaryHandlers(), http.get('/api/v1/admin/submissions', () => HttpResponse.json({ data: [], meta: { current_page: 1, last_page: 1, total: 0 } })), http.get('/api/v1/admin/versions', () => HttpResponse.json(page([]))))
     const { user, router } = renderAt('/admin')
 
     await user.click(await screen.findByRole('link', { name: 'Versões' }))

@@ -5,7 +5,7 @@ import { catalogHandler } from '../test/games'
 import { renderAt } from '../test/render'
 import { server } from '../test/server'
 import { makeAdmin, makeUser, sessionHandlers } from '../test/session'
-import { queueHandlers } from '../test/versions'
+import { dashboardSummaryHandlers, queueHandlers } from '../test/versions'
 
 describe('App', () => {
   it('mostra a página inicial do Bitman', async () => {
@@ -76,6 +76,7 @@ describe('área admin (só interface: quem autoriza é a API)', () => {
       catalogHandler(),
       ...sessionHandlers(makeAdmin()).handlers,
       ...queueHandlers().handlers,
+      ...dashboardSummaryHandlers(),
     )
     renderAt('/admin')
 

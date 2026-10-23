@@ -87,3 +87,11 @@ export function queueHandlers(counts: Partial<VersionSummary> = {}, readyToPubli
     ],
   }
 }
+
+/** Os cards do painel fora das versões (M18, M21), sem nada pendente. */
+export function dashboardSummaryHandlers() {
+  return [
+    http.get('/api/v1/admin/scores/summary', () => HttpResponse.json({ data: { in_review: 0 } })),
+    http.get('/api/v1/admin/developer-requests/summary', () => HttpResponse.json({ data: { pending: 0 } })),
+  ]
+}

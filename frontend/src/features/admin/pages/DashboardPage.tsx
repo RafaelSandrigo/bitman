@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router'
 import { errorMessage } from '../../../shared/api/http'
 import { Alert } from '../../../shared/ui/Alert'
+import { getDeveloperRequestSummary } from '../developerRequests'
 import { getScoreSummary } from '../scores'
 import { getVersionSummary, type VersionSummary } from '../versions'
 
@@ -44,6 +45,22 @@ function ScoresInReviewCard() {
   )
 }
 
+/** M18: pedidos "Seja Desenvolvedor" esperando decisão. */
+function DeveloperRequestsCard() {
+  const summary = useQuery({ queryKey: ['admin', 'developer-requests', 'summary'], queryFn: getDeveloperRequestSummary, refetchInterval: 60_000 })
+  if (!summary.data) return null
+
+  return (
+    <li>
+      <Link to="/admin/desenvolvedores" className="block h-full space-y-1 rounded-lg border border-slate-800 bg-slate-900/50 p-4 hover:border-emerald-500">
+        <span className="block text-sm text-slate-300">Pedidos de developer</span>
+        <span className="block text-3xl font-bold">{summary.data.pending}</span>
+        <span className="block text-xs text-slate-400">Pessoas pedindo para publicar jogos.</span>
+      </Link>
+    </li>
+  )
+}
+
 /** Visão geral do trabalho do admin: as filas por estado, com o que chegou e ninguém viu ainda. */
 export function DashboardPage() {
   const summary = useQuery({ queryKey: ['admin', 'versions', 'summary'], queryFn: getVersionSummary, refetchInterval: 30_000 })
@@ -70,6 +87,7 @@ export function DashboardPage() {
           </li>
         ))}
         <ScoresInReviewCard />
+        <DeveloperRequestsCard />
       </ul>
     </section>
   )

@@ -28,9 +28,13 @@ function UserMenu() {
       <NavLink to="/minhas-partidas" className="hover:text-emerald-400">
         Minhas partidas
       </NavLink>
-      {hasPermission(user, Permission.SubmitGames) && (
+      {hasPermission(user, Permission.SubmitGames) ? (
         <NavLink to="/desenvolvedor/jogos" className="hover:text-emerald-400">
           Meus jogos
+        </NavLink>
+      ) : (
+        <NavLink to="/seja-desenvolvedor" className="font-semibold text-emerald-400 hover:underline">
+          Seja Desenvolvedor
         </NavLink>
       )}
       {user.roles.includes('admin') && (

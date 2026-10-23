@@ -7,6 +7,7 @@ import { makeAdmin, sessionHandlers } from '../../../test/session'
 import { queueHandlers } from '../../../test/versions'
 
 const scoreSummary = (inReview = 0) => http.get('/api/v1/admin/scores/summary', () => HttpResponse.json({ data: { in_review: inReview } }))
+const requestSummary = (pending = 0) => http.get('/api/v1/admin/developer-requests/summary', () => HttpResponse.json({ data: { pending } }))
 
 describe('DashboardPage', () => {
   it('é a página inicial da administração e leva a cada fila de trabalho com o total e os novos', async () => {
@@ -23,6 +24,7 @@ describe('DashboardPage', () => {
         2,
       ).handlers,
       scoreSummary(),
+      requestSummary(),
     )
     const { router } = renderAt('/admin')
 
@@ -41,18 +43,21 @@ describe('DashboardPage', () => {
   })
 
   it('avisa quando não há nada pendente', async () => {
-    server.use(...sessionHandlers(makeAdmin()).handlers, ...queueHandlers().handlers, scoreSummary())
+    server.use(...sessionHandlers(makeAdmin()).handlers, ...queueHandlers().handlers, scoreSummary(), requestSummary())
     renderAt('/admin')
 
     expect(await screen.findByText('Nenhuma versão espera por uma decisão.')).toBeInTheDocument()
   })
 
-  it('M21: mostra os scores sinalizados em revisão e leva à moderação', async () => {
-    server.use(...sessionHandlers(makeAdmin()).handlers, ...queueHandlers().handlers, scoreSummary(4))
+  it('M21 e M18: mostra os scores em revisão e os pedidos de developer, levando a cada fila', async () => {
+    server.use(...sessionHandlers(makeAdmin()).handlers, ...queueHandlers().handlers, scoreSummary(4), requestSummary(2))
     renderAt('/admin')
 
     const card = await screen.findByRole('link', { name: /Scores em revisão/ }, { timeout: 3000 })
     expect(within(card).getByText('4')).toBeInTheDocument()
     expect(card).toHaveAttribute('href', '/admin/scores')
+    const requests = await screen.findByRole('link', { name: /Pedidos de developer/ })
+    expect(within(requests).getByText('2')).toBeInTheDocument()
+    expect(requests).toHaveAttribute('href', '/admin/desenvolvedores')
   })
 })

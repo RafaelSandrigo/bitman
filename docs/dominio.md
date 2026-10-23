@@ -53,13 +53,26 @@ diretamente os dados de outro contexto. Detalhes em [arquitetura.md](arquitetura
 - `grantRole(role, actor)` / `revokeRole(role, actor)` são os únicos meios de mudar roles. Eles recusam role repetida,
   remoção de `player`, remoção de role ausente e roles acima de `player` para quem não confirmou o e-mail.
   Cada mudança registra `RoleGranted` / `RoleRevoked`, que são auditáveis.
-- Pelo painel só se promove ou rebaixa `developer`. `admin` só é concedido pelo console (`user:grant-role`).
+- Pelo painel só se promove ou rebaixa `developer`, diretamente ou aprovando um pedido (`DeveloperRequest`). `admin` só é concedido pelo console (`user:grant-role`).
 
 | Role | Permissões |
 |---|---|
 | `player` | — (joga e aparece nos rankings, com e-mail confirmado) |
 | `developer` | `games.submit` |
 | `admin` | todas: `games.submit`, `games.manage`, `versions.authorize-import`, `versions.approve-commit`, `files.review`, `versions.publish`, `games.block`, `scores.moderate`, `users.manage-roles` e `audit.view` |
+
+### DeveloperRequest (Identity)
+
+Pedido "Seja Desenvolvedor" (M18).
+
+- Campos: `userId`, `name`, `githubUrl`, `bio`, `status` (`pending` → `approved` | `rejected`), `decidedById`,
+  `decidedAt`, `decisionReason` e `createdAt`.
+- `open()` exige e-mail confirmado e recusa quem já é `developer`. Um `pending` por usuário (índice parcial).
+- `githubUrl` só aceita um perfil: `https://github.com/{usuário}`, nas regras de nome do GitHub (`GithubProfileUrl`).
+  `bio` tem de 20 a 1000 caracteres. Nome, link e apresentação são texto do usuário e só são exibidos como texto.
+- `approve(admin)` concede `developer` por `grantRole()`. `reject(admin, motivo)` guarda o motivo, que o usuário vê,
+  e ele pode pedir de novo. Os dois exigem `users.manage-roles` e são auditados (`identity.developer-request-approved`
+  e `identity.developer-request-rejected`). O pedido em si gera `identity.developer-requested`.
 
 ### Game (Catalog)
 

@@ -25,6 +25,9 @@ export function AdminLayout() {
         <NavLink to="/admin/usuarios" className={linkClass}>
           Usuários
         </NavLink>
+        <NavLink to="/admin/desenvolvedores" className={linkClass}>
+          Pedidos de dev
+        </NavLink>
         <NavLink to="/admin/auditoria" className={linkClass}>
           Auditoria
         </NavLink>

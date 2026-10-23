@@ -95,6 +95,8 @@ describe('visitante', () => {
     expect(claims).toEqual([{ id: play.id, token: play.token }])
     await waitFor(() => expect(router.state.location.pathname).toBe('/games/snake'))
     expect(readPendingScore()).toBeNull()
+    // De volta ao jogo, já logado: a partida passa a valer score.
+    expect(await screen.findByText(/Partida valendo score/)).toBeInTheDocument()
   })
 
   it('e-mail não confirmado: o painel pede a confirmação, e o score não é salvo ainda', async () => {
