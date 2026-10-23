@@ -16,6 +16,5 @@ anotado no commit.
 | M6 | Realce de sintaxe no Portão 2 | O visualizador mostra texto puro, com números de linha | Tokenizar no cliente e renderizar os tokens como elementos React (nunca HTML gerado por biblioteca), mantendo J5 | Fase 4 |
 | M8 | Status `rejected` do jogo | `dominio.md` prevê o jogo `rejected` quando a primeira versão é rejeitada, mas o jogo fica `submitted`; o dono vê o estado pela versão | Decidir se o status do jogo é necessário (talvez removê-lo) ou implementar a transição, com volta ao reenviar | Fase 4 |
 | M13 | Endpoint de jogos do admin | A aba Jogos usa `GET /admin/submissions?status=…`, nome herdado da fila de submissões | Renomear para `GET /admin/games` mantendo o filtro | Fase 5 |
-
 | M16 | Posição fora do top 100 | O ranking mostra só as 100 primeiras posições; quem está abaixo só vê a própria posição logo depois de enviar um score | Mostrar "sua posição: Nº" abaixo da tabela para o jogador logado | Fase 6 |
 | M17 | Jogar de novo pelo próprio jogo | Cada partida recarrega o iframe pelo botão **Jogar de novo** do hub; o jogo não consegue oferecer "jogar de novo" na própria tela | Mensagem `play-again` no protocolo (v1, opcional): o hub abre outra sessão e recarrega o iframe, sem nunca passar o token ao jogo | Fase 6 |

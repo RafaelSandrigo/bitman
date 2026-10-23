@@ -79,6 +79,18 @@ Cada passo está no runbook do `deploy-hub/README.md`. Os que dependem de acesso
 7. **Aprovar o hash:** ler o script e rodar `~/.local/share/deploy-hub/bin/approve.sh bitman`.
 8. **Testar:** GitHub › Actions › deploy › *Run workflow* e conferir o 🚀 / ✅ no Telegram.
 
+## Tarefas agendadas
+
+Rodam no container `scheduler` (`schedule:work`) e registram em JSON no `stderr` (`make logs s=scheduler`).
+
+| Comando | Quando | O que faz | Alerta |
+|---|---|---|---|
+| `bitman:reconcile-served` | de hora em hora | Confere o `served/` contra as versões no ar e corrige a partir do archive (M12) | `served.restore_failed` (error) e exit 1 |
+| `bitman:expire-sessions` | a cada 15 min | Expira sessões vencidas e apaga partidas de visitante sem score para salvar (M14) | — |
+| `bitman:admin-digest` | 12h UTC | E-mail ao admin com as versões esperando decisão (M3) | — |
+
+Os e-mails saem pela fila `default`, processada pelo container `queue`.
+
 ## Reverter
 
 - **Caminho normal:** `git revert` do commit problemático e push. O revert passa pelo CI e pelo deploy como qualquer
