@@ -1,1 +1,23 @@
 @import "tailwindcss";
+
+/* Painel de resultado do hub (ResultPanel): entra com um "pop" curto. */
+@keyframes bitman-pop {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.bitman-pop {
+  animation: bitman-pop 220ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bitman-pop {
+    animation: none;
+  }
+}

@@ -180,6 +180,12 @@ e URI) depois do fluxo completo.
 - Teste de fumaça pós-deploy: headers de segurança e hash dos arquivos servidos (C1, C2).
 - Observabilidade mínima: logs estruturados, alertas de `fetch_failed` e de scores sinalizados.
 
+### Melhorias entregues na Fase 8
+
+| Item | Entrega | Onde |
+|---|---|---|
+| Confirmação do score | Painel do Bitman sobre o jogo com o resultado (registrado, posição, recorde, recusado). Visitante e e-mail não confirmado jogam numa partida de visitante; o painel avisa que não estão logados e oferece cadastro e login, e o score é salvo na conta depois da confirmação | [arquitetura.md](arquitetura.md#partida-de-visitante), [dominio.md](dominio.md#guestplay-play), A10 |
+
 ## Checklist de lançamento
 
 Executado quando o Bitman sair do pré-lançamento:

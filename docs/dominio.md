@@ -180,6 +180,21 @@ total e se há novas (`GET /api/v1/admin/versions/summary`).
   jogo, com a versão exibida ao lado. Empates ficam na mesma posição (1, 1, 3); entre eles, quem chegou primeiro
   aparece antes. Mostra as 100 primeiras posições.
 
+### GuestPlay (Play)
+
+Partida de quem não tem conta ou ainda não confirmou o e-mail.
+
+- `GuestPlay`: `id` (ULID), `gameId`, `gameVersionId`, `tokenHash`, `startedAt`, `expiresAt`, `value`, `endedAt`,
+  `claimExpiresAt` e `claimedScoreId` (único).
+- `start()` só numa versão jogável (I9), sem conta. O token segue as mesmas regras da `GameSession`.
+- `recordScore()` aplica as regras de I10 que não dependem de conta: o token confere, ainda sem score (senão 409),
+  dentro do prazo e com a duração mínima. O valor fica **pendente**: não cria `Score` nem entra no ranking.
+  O prazo para salvar é de 24 h (`play.guest_claim_ttl_seconds`).
+- `claim()` exige uma conta com e-mail confirmado (A5), o mesmo token e o prazo de salvar ainda aberto. Cria uma
+  `GameSession` já `scored`, com o início e o fim reais da partida, e o `Score` por ela, com a sinalização de anomalia
+  de sempre (S2). Salva uma única vez, para uma única conta (`claimed_score_id` único, 409 na segunda tentativa).
+- Jogo bloqueado ou versão retirada entre a partida e o salvamento: o score não entra.
+
 ### Score: limite técnico
 
 Não há score máximo por jogo. O único teto é o maior inteiro que **todas** as camadas

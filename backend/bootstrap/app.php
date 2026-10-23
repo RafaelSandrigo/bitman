@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Modules\Identity\Http\Middleware\EnsureEmailIsVerified;
+use App\Modules\Play\Domain\Exceptions\GuestScoreAlreadyClaimed;
 use App\Modules\Play\Domain\Exceptions\SessionAlreadyScored;
 use App\Modules\Versioning\Domain\Exceptions\ArtifactAlreadyExists;
 use App\Modules\Versioning\Domain\Exceptions\PublishedContentMismatch;
@@ -42,6 +43,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // Único ponto de mapeamento das regras de negócio para HTTP.
         // S1: replay de score é conflito, não erro de validação.
         $exceptions->render(fn (SessionAlreadyScored $e) => response()->json(['message' => $e->getMessage()], 409));
+        $exceptions->render(fn (GuestScoreAlreadyClaimed $e) => response()->json(['message' => $e->getMessage()], 409));
         $exceptions->render(fn (BusinessRuleViolation $e) => response()->json(['message' => $e->getMessage()], 422));
         // P1: quarentena adulterada. Continua sendo reportada; o admin vê o motivo, nunca o conteúdo.
         $exceptions->render(fn (QuarantineTampered $e) => response()->json(['message' => $e->getMessage()], 409));

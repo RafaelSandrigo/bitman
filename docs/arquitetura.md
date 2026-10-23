@@ -286,7 +286,22 @@ SPA. Contrato para desenvolvedores: [protocolo-do-jogo.md](protocolo-do-jogo.md)
 - `GET /games/{slug}/leaderboard` (público) vem do `CachedLeaderboard` (Redis, TTL de 10 min), invalidado **depois
   do commit** de `ScoreRecorded`, `ScoreHidden` e `ScoreRestored`. A posição do jogador na resposta do envio é lida
   do banco. `GET /me/scores` é o histórico do jogador.
-- Visitante e conta sem e-mail confirmado jogam sem sessão: o iframe usa a `play_url` do catálogo e nenhum score é enviado.
+- O resultado aparece num painel do hub sobre o iframe (`ResultPanel`): enviando, registrado (posição e recorde),
+  recusado ou inválido. O painel é do hub, fora do iframe, e o jogo não consegue imitá-lo nem escondê-lo.
+
+### Partida de visitante
+
+Quem não tem conta ou ainda não confirmou o e-mail joga numa `GuestPlay` ([dominio.md](dominio.md#guestplay-play)).
+
+1. `POST /games/{slug}/guest-plays` (público, 30/h por IP) abre a partida, com token e `play_url` como na sessão.
+2. No `game-over`, `POST /guest-plays/{id}/score` (público, 20/min por IP) guarda o score pendente. O painel do
+   Bitman avisa que a pessoa não está logada e oferece **Criar conta e salvar** e **Entrar e salvar**. Para
+   e-mail não confirmado, oferece **Confirmar e-mail e salvar**.
+3. A SPA guarda `{id, token, jogo, valor, prazo}` no `localStorage` do hub (`pendingScore.ts`). Assim o score
+   sobrevive ao login, ao cadastro e à confirmação do e-mail, que abre outra aba. Sem storage, ele fica na memória da aba.
+4. Quando a conta está confirmada, o `PendingScoreSaver` (no layout, em qualquer página) chama
+   `POST /guest-plays/{id}/claim` (login + e-mail confirmado) e mostra o aviso "Score salvo", com a posição e um link
+   para o ranking. Uma recusa definitiva (4xx) apaga o pendente; uma falha de rede deixa para a próxima vez.
 
 ## Frontend
 

@@ -6,6 +6,7 @@ namespace App\Modules\Play\Application;
 
 use App\Modules\Catalog\Domain\Game;
 use App\Modules\Catalog\Domain\GameStatus;
+use App\Modules\Play\Domain\Exceptions\GameNotPlayable;
 use App\Modules\Versioning\Domain\GameVersion;
 use App\Modules\Versioning\Domain\VersionStatus;
 
@@ -23,5 +24,20 @@ final readonly class PlayableGames
             ->first();
 
         return $game === null || $version === null ? null : [$game, $version];
+    }
+
+    /**
+     * Jogo bloqueado ou versão retirada durante a partida: o score não entra. Versão substituída
+     * por uma nova durante a partida continua valendo (o ranking considera todas as versões).
+     */
+    public function assertStillAcceptsScores(string $gameId, string $versionId): void
+    {
+        $game = Game::query()->find($gameId);
+        $version = GameVersion::query()->find($versionId);
+
+        if ($game?->status !== GameStatus::Published
+            || ! in_array($version?->status, [VersionStatus::Published, VersionStatus::Superseded], true)) {
+            throw new GameNotPlayable;
+        }
     }
 }

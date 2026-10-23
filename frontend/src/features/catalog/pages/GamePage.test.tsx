@@ -2,14 +2,20 @@ import { screen, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
 import { catalogHandler, makePublicGame } from '../../../test/games'
-import { leaderboardHandler } from '../../../test/play'
+import { leaderboardHandler, makeGameSession } from '../../../test/play'
 import { renderAt } from '../../../test/render'
 import { server } from '../../../test/server'
 import { sessionHandlers } from '../../../test/session'
 import type { PublicGame } from '../game'
 
+/** O visitante joga numa partida de visitante, cuja play_url é a da versão no ar. */
 function serveGame(game: PublicGame) {
-  server.use(...sessionHandlers(null).handlers, leaderboardHandler([], game.slug), http.get(`/api/v1/games/${game.slug}`, () => HttpResponse.json({ data: game })))
+  server.use(
+    ...sessionHandlers(null).handlers,
+    leaderboardHandler([], game.slug),
+    http.get(`/api/v1/games/${game.slug}`, () => HttpResponse.json({ data: game })),
+    http.post(`/api/v1/games/${game.slug}/guest-plays`, () => HttpResponse.json({ data: makeGameSession({ play_url: game.play_url }) }, { status: 201 })),
+  )
 }
 
 describe('catálogo e página do jogo', () => {

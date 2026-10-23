@@ -40,6 +40,13 @@ export const MyScoreSchema = z.object({
 })
 export type MyScore = z.infer<typeof MyScoreSchema>
 
+/** Score de partida de visitante: guardado no servidor, pendente até uma conta confirmada salvá-lo. */
+export const GuestScoreSchema = z.object({ value: z.number().int(), claim_expires_at: z.string() })
+export type GuestScore = z.infer<typeof GuestScoreSchema>
+
+export const ClaimedScoreSchema = ScoreResultSchema.extend({ game: z.object({ slug: z.string(), name: z.string() }) })
+export type ClaimedScore = z.infer<typeof ClaimedScoreSchema>
+
 const PageMetaSchema = z.object({ current_page: z.number(), last_page: z.number(), total: z.number() })
 
 export async function startSession(slug: string) {
@@ -53,6 +60,23 @@ export async function submitScore(session: GameSession, score: number) {
       token: session.token,
     })
   ).data
+}
+
+export async function startGuestPlay(slug: string) {
+  return (await apiSend('POST', `/api/v1/games/${encodeURIComponent(slug)}/guest-plays`, z.object({ data: GameSessionSchema }))).data
+}
+
+export async function submitGuestScore(play: GameSession, score: number) {
+  return (
+    await apiSend('POST', `/api/v1/guest-plays/${encodeURIComponent(play.id)}/score`, z.object({ data: GuestScoreSchema }), {
+      score,
+      token: play.token,
+    })
+  ).data
+}
+
+export async function claimGuestScore(id: string, token: string) {
+  return (await apiSend('POST', `/api/v1/guest-plays/${encodeURIComponent(id)}/claim`, z.object({ data: ClaimedScoreSchema }), { token })).data
 }
 
 export async function getLeaderboard(slug: string) {

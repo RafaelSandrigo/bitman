@@ -26,6 +26,7 @@ final class PlayServiceProvider extends ServiceProvider
         $this->app->singleton(PlayRules::class, fn (Application $app): PlayRules => new PlayRules(
             sessionTtlSeconds: (int) $app->make('config')->get('play.session_ttl_seconds'),
             minSessionSeconds: (int) $app->make('config')->get('play.min_session_seconds'),
+            guestClaimTtlSeconds: (int) $app->make('config')->get('play.guest_claim_ttl_seconds'),
         ));
         $this->app->singleton(AnomalyPolicy::class, fn (Application $app): AnomalyPolicy => new AnomalyPolicy(
             factor: (float) $app->make('config')->get('play.anomaly.factor'),
@@ -53,6 +54,9 @@ final class PlayServiceProvider extends ServiceProvider
                 Limit::perMinute(20)->by('sessions|'.$user),
             ];
         });
+        // Sem conta, o limite é por IP: cada partida de visitante aceita um score pendente.
+        RateLimiter::for('guest-plays', fn (Request $request): Limit => Limit::perHour((int) config('play.guest_plays_per_hour'))->by('guest-plays|'.$request->ip()));
+        RateLimiter::for('guest-scores', fn (Request $request): Limit => Limit::perMinute(20)->by('guest-scores|'.$request->ip()));
         RateLimiter::for('score-submissions', fn (Request $request): Limit => Limit::perMinute(20)->by('scores|'.$request->user()?->getAuthIdentifier()));
     }
 }

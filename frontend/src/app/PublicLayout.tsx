@@ -1,6 +1,9 @@
 import { Link, NavLink, Outlet, useNavigate } from 'react-router'
 import { Permission } from '../features/auth/api'
 import { hasPermission, useCurrentUser, useLogout } from '../features/auth/session'
+import { formatScore } from '../features/play/format'
+import { usePendingScore } from '../features/play/pendingScore'
+import { PendingScoreSaver } from '../features/play/PendingScoreSaver'
 
 function UserMenu() {
   const { data: user } = useCurrentUser()
@@ -50,6 +53,7 @@ function UserMenu() {
 
 function UnverifiedBanner() {
   const { data: user } = useCurrentUser()
+  const pending = usePendingScore()
   if (!user || user.email_verified) return null
 
   return (
@@ -58,6 +62,11 @@ function UnverifiedBanner() {
       <Link to="/verificar-email" className="font-semibold underline">
         Saiba mais
       </Link>
+      {pending && (
+        <span className="block">
+          Seu score de {formatScore(pending.value)} em {pending.gameName} fica guardado e é salvo assim que você confirmar.
+        </span>
+      )}
     </div>
   )
 }
@@ -77,6 +86,7 @@ export function PublicLayout() {
       <main className="mx-auto max-w-6xl px-4 py-8">
         <Outlet />
       </main>
+      <PendingScoreSaver />
     </div>
   )
 }

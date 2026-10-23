@@ -23,7 +23,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * Resultado de uma sessão. Nasce só por `GameSession::recordScore()`. O valor nunca muda; o admin
+ * Resultado de uma sessão. Nasce só por `GameSession::recordScore()` ou, para a partida de visitante
+ * salva numa conta, por `GameSession::recordGuestScore()`. O valor nunca muda; o admin
  * pode ocultá-lo do ranking (e devolvê-lo), sempre auditado. Sinalizado (S2) continua no ranking
  * até alguém decidir.
  *

@@ -61,6 +61,32 @@ final class GameSession extends Model implements EmitsDomainEvents
         return $session;
     }
 
+    /** A partida de visitante salva por uma conta: já nasce encerrada, com o início e o fim reais. */
+    public static function fromGuestPlay(User $player, GuestPlay $play): self
+    {
+        $session = new self;
+        $session->user_id = $player->id;
+        $session->game_id = $play->game_id;
+        $session->game_version_id = $play->game_version_id;
+        $session->token_hash = $play->token_hash;
+        $session->status = SessionStatus::Scored;
+        $session->started_at = $play->started_at;
+        $session->expires_at = $play->expires_at;
+        $session->ended_at = $play->ended_at;
+        $session->save();
+
+        return $session;
+    }
+
+    /** Score de uma partida de visitante: as regras de I10 já foram conferidas em GuestPlay. */
+    public function recordGuestScore(ScoreValue $value, ?string $flagReason, CarbonImmutable $now): Score
+    {
+        $score = Score::record($this, $value, $flagReason, $now);
+        $this->recordEvent(new ScoreRecorded($score->id, $this->game_id, $this->user_id, $value->value, $score->flagged));
+
+        return $score;
+    }
+
     /** Outra partida do mesmo jogo começou: esta não aceita mais score. */
     public function expire(CarbonImmutable $now): void
     {

@@ -2,7 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
 import { makePublicGame } from '../../test/games'
-import { leaderboardHandler, makeGameSession, makeLeaderboardEntry, postFromGame } from '../../test/play'
+import { guestPlayHandler, leaderboardHandler, makeGameSession, makeLeaderboardEntry, postFromGame } from '../../test/play'
 import { renderAt } from '../../test/render'
 import { server } from '../../test/server'
 import { makeUser, sessionHandlers } from '../../test/session'
@@ -16,6 +16,7 @@ const gameOver = (score: unknown) => ({ source: 'bitman', version: 1, type: 'gam
 function setup(user: CurrentUser | null, sessions: GameSession[] = [makeGameSession()]) {
   const started: GameSession[] = []
   const scores: unknown[] = []
+  const guestPlays: GameSession[] = []
   server.use(
     ...sessionHandlers(user).handlers,
     leaderboardHandler([]),
@@ -29,27 +30,23 @@ function setup(user: CurrentUser | null, sessions: GameSession[] = [makeGameSess
       scores.push({ id: params.id, ...((await request.json()) as object) })
       return HttpResponse.json({ data: { value: 1234, position: 2, personal_best: true, previous_best: null } }, { status: 201 })
     }),
+    http.post('/api/v1/games/snake/guest-plays', () => {
+      const play = makeGameSession()
+      guestPlays.push(play)
+      return HttpResponse.json({ data: play }, { status: 201 })
+    }),
   )
-  return { started, scores, ...renderAt('/games/snake') }
+  return { started, scores, guestPlays, ...renderAt('/games/snake') }
 }
 
 describe('partida valendo score', () => {
-  it('visitante joga sem sessão: iframe da versão no ar e convite para entrar', async () => {
-    const { started } = setup(null)
-
-    const iframe = await screen.findByTitle('Jogo: Snake')
-    expect(iframe).toHaveAttribute('src', game.play_url)
-    expect(screen.getByText(/jogando sem registrar score/)).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Entre' })).toHaveAttribute('href', '/entrar?next=%2Fgames%2Fsnake')
-    expect(started).toHaveLength(0)
-  })
-
-  it('e-mail não confirmado joga sem sessão (A5)', async () => {
-    const { started } = setup(makeUser({ email_verified: false }))
+  it('e-mail não confirmado não abre sessão valendo score (A5): joga como visitante', async () => {
+    const { started, guestPlays } = setup(makeUser({ email_verified: false }))
 
     await screen.findByTitle('Jogo: Snake')
     expect(screen.getByText(/Confirme seu e-mail para registrar seus scores/)).toBeInTheDocument()
     expect(started).toHaveLength(0)
+    expect(guestPlays).toHaveLength(1)
   })
 
   it('com conta confirmada, abre uma sessão e carrega a URL dela no iframe sandbox', async () => {
@@ -70,7 +67,10 @@ describe('partida valendo score', () => {
 
     postFromGame(iframe, gameOver(1234))
 
-    expect(await screen.findByText(/Score 1\.234 registrado · 2º lugar no ranking\. Novo recorde pessoal!/)).toBeInTheDocument()
+    const panel = await screen.findByRole('dialog', { name: 'Score registrado!' })
+    expect(within(panel).getByLabelText('1.234 pontos')).toBeInTheDocument()
+    expect(within(panel).getByText('2º lugar no ranking')).toBeInTheDocument()
+    expect(within(panel).getByText('Novo recorde pessoal!')).toBeInTheDocument()
     expect(scores).toEqual([{ id: session.id, score: 1234, token: session.token }])
   })
 
@@ -84,7 +84,7 @@ describe('partida valendo score', () => {
     postFromGame(iframe, gameOver(10))
     postFromGame(iframe, gameOver(99999))
 
-    await screen.findByText(/registrado/)
+    await screen.findByRole('dialog', { name: 'Score registrado!' })
     expect(scores).toHaveLength(1)
     expect(scores[0]).toMatchObject({ score: 10 })
   })
@@ -95,7 +95,7 @@ describe('partida valendo score', () => {
 
     postFromGame(iframe, gameOver(1.5))
 
-    expect(await screen.findByText('O jogo enviou um score inválido; nada foi registrado.')).toBeInTheDocument()
+    expect(await screen.findByRole('dialog', { name: 'O jogo enviou um score inválido; nada foi registrado.' })).toBeInTheDocument()
     expect(scores).toHaveLength(0)
   })
 
@@ -119,15 +119,15 @@ describe('partida valendo score', () => {
     const { user, started, scores } = setup(makeUser(), [first, second])
     let iframe = (await screen.findByTitle('Jogo: Snake')) as HTMLIFrameElement
     postFromGame(iframe, gameOver(1))
-    await screen.findByText(/registrado/)
+    await screen.findByRole('dialog', { name: 'Score registrado!' })
 
-    await user.click(screen.getByRole('button', { name: 'Jogar de novo' }))
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Jogar de novo' }))
 
     await waitFor(() => expect(screen.getByTitle('Jogo: Snake')).toHaveAttribute('src', second.play_url))
-    expect(screen.queryByText(/registrado/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     iframe = screen.getByTitle('Jogo: Snake') as HTMLIFrameElement
     postFromGame(iframe, gameOver(2))
-    await screen.findByText(/registrado/)
+    await screen.findByRole('dialog', { name: 'Score registrado!' })
     expect(started).toEqual([first, second])
     expect(scores).toEqual([
       { id: first.id, score: 1, token: first.token },
@@ -155,6 +155,7 @@ describe('ranking', () => {
   it('mostra posição, jogador, score, versão e destaca o próprio jogador, com a limitação explícita', async () => {
     server.use(
       ...sessionHandlers(null).handlers,
+      guestPlayHandler(),
       http.get('/api/v1/games/snake', () => HttpResponse.json({ data: game })),
       leaderboardHandler([
         makeLeaderboardEntry({ position: 1, player_name: 'Ana', value: 9_007_199_254_740_991, version_number: 2 }),
@@ -175,7 +176,7 @@ describe('ranking', () => {
   })
 
   it('sem scores, convida a jogar', async () => {
-    server.use(...sessionHandlers(null).handlers, http.get('/api/v1/games/snake', () => HttpResponse.json({ data: game })), leaderboardHandler([]))
+    server.use(...sessionHandlers(null).handlers, guestPlayHandler(), http.get('/api/v1/games/snake', () => HttpResponse.json({ data: game })), leaderboardHandler([]))
     renderAt('/games/snake')
 
     expect(await screen.findByText('Ninguém pontuou ainda. Seja o primeiro!')).toBeInTheDocument()

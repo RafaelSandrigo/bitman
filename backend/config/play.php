@@ -14,6 +14,12 @@ return [
     // I10: duração mínima de uma partida para registrar score.
     'min_session_seconds' => (int) env('PLAY_MIN_SESSION_SECONDS', 5),
 
+    // Partida de visitante: prazo para entrar (ou criar a conta e confirmar o e-mail) e salvar o score.
+    'guest_claim_ttl_seconds' => (int) env('PLAY_GUEST_CLAIM_TTL_SECONDS', 24 * 60 * 60),
+
+    // S2: partidas de visitante por hora para cada IP.
+    'guest_plays_per_hour' => 30,
+
     // S2: sinaliza scores acima do p99 do jogo × fator, a partir de uma amostra mínima.
     'anomaly' => [
         'factor' => 3.0,

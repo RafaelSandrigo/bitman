@@ -34,3 +34,8 @@ export function leaderboardHandler(entries: LeaderboardEntry[] = [], slug = 'sna
 export function postFromGame(iframe: HTMLIFrameElement, data: unknown, options: { origin?: string; source?: Window | null } = {}) {
   window.dispatchEvent(new MessageEvent('message', { data, origin: options.origin ?? 'null', source: options.source === undefined ? iframe.contentWindow : options.source }))
 }
+
+/** Sem conta, a página do jogo abre uma partida de visitante: este handler a atende. */
+export function guestPlayHandler(slug = 'snake', play: GameSession = makeGameSession()) {
+  return http.post(`/api/v1/games/${slug}/guest-plays`, () => HttpResponse.json({ data: play }, { status: 201 }))
+}
