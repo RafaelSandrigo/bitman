@@ -12,3 +12,4 @@ Thumbs.db
 
 # Build do frontend servido pelo bitman-web
 frontend/dist/
+.muxel/

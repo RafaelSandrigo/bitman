@@ -1,7 +1,7 @@
 # Imagem PHP do Bitman (app, queue e scheduler).
 # Pré-lançamento: o código é montado por bind mount e as dependências de dev
 # ficam disponíveis para rodar os testes dentro do container.
-FROM php:8.5-fpm-alpine AS app
+FROM php:8.5.12-fpm-alpine AS app
 
 # O opcache já é embutido no PHP 8.5 (não é instalado como extensão).
 
