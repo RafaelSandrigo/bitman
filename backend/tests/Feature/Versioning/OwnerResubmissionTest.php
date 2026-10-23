@@ -101,6 +101,30 @@ describe('reenvio pelo dono', function (): void {
             ->assertJsonPath('data.0.game.id', $game->id);
     })->with(['validationFailed', 'fetchFailed', 'published']);
 
+    it('M1: reenvia com outra branch ou tag, só para esta versão, auditada', function (): void {
+        $owner = User::factory()->developer()->create();
+        $game = Game::factory()->for($owner, 'owner')->create(['default_ref' => 'main']);
+        GameVersion::factory()->for($game)->published()->create();
+
+        $this->actingAs($owner)->postJson("/api/v1/me/games/{$game->id}/versions", ['ref' => 'v1.1'])
+            ->assertCreated()
+            ->assertJsonPath('data.requested_ref', 'v1.1');
+
+        expect(AuditEntry::sole()->context)->toMatchArray(['ref' => 'v1.1'])
+            ->and($game->fresh()?->default_ref)->toBe('main');
+        Queue::assertNothingPushed();
+    });
+
+    it('M1: a ref informada passa pelas regras de GitRef', function (string $ref): void {
+        $owner = User::factory()->developer()->create();
+        $game = Game::factory()->for($owner, 'owner')->create();
+        GameVersion::factory()->for($game)->fetchFailed()->create();
+
+        $this->actingAs($owner)->postJson("/api/v1/me/games/{$game->id}/versions", ['ref' => $ref])->assertJsonValidationErrors('ref');
+
+        expect(GameVersion::query()->where('game_id', $game->id)->count())->toBe(1);
+    })->with(['opção do git' => '--upload-pack=x', 'traversal' => '../main', 'espaço' => 'minha branch']);
+
     it('recusa enquanto houver versão em andamento', function (): void {
         $owner = User::factory()->developer()->create();
         $game = Game::factory()->for($owner, 'owner')->create();

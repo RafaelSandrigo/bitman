@@ -1,11 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useState } from 'react'
 import { Link, useLocation } from 'react-router'
-import { errorMessage } from '../../../shared/api/http'
+import { errorMessage, fieldErrors } from '../../../shared/api/http'
 import { Alert } from '../../../shared/ui/Alert'
 import { Button } from '../../../shared/ui/Button'
+import { TextField } from '../../../shared/ui/TextField'
 import { versionStatusLabels, type VersionStatus } from '../../admin/versions'
 import { gameStatusLabels, type Game } from '../../catalog/game'
 import { listMyGames, listMyVersions, resubmitGame, type MyVersion } from '../api'
+import { StopReason } from '../StopReason'
 
 const dateFormat = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short' })
 
@@ -19,47 +22,32 @@ function submittedName(state: unknown): string | null {
   return null
 }
 
-/** Por que a versão parou: violações da política, motivo do admin ou falha da busca. */
-function StopReason({ version }: { version: MyVersion }) {
-  if (version.status === 'validation_failed') {
-    return (
-      <Alert tone="error">
-        <p>O repositório não passou na validação:</p>
-        <ul aria-label="Violações" className="mt-1 list-disc space-y-1 pl-5">
-          {version.violations.map((violation, index) => (
-            <li key={`${violation.code}-${index}`}>{violation.message}</li>
-          ))}
-        </ul>
-      </Alert>
-    )
-  }
-  if (version.status === 'import_rejected' && version.rejection_reason) {
-    return <Alert tone="error">Motivo: {version.rejection_reason}</Alert>
-  }
-  if (version.status === 'fetch_failed' && version.fetch_failure) {
-    return <Alert tone="error">{version.fetch_failure.message}</Alert>
-  }
-  return null
-}
-
-/** Nova versão pela URL e ref atuais do jogo; ela volta para a autorização do admin. */
+/** Nova versão pela URL do jogo e a ref dele, ou outra branch/tag só para esta versão (M1); ela volta para a autorização do admin. */
 function ResubmitButton({ game, stopped }: { game: Game; stopped: boolean }) {
   const queryClient = useQueryClient()
+  const [ref, setRef] = useState('')
   const mutation = useMutation({
-    mutationFn: () => resubmitGame(game.id),
+    mutationFn: () => resubmitGame(game.id, ref.trim() || undefined),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['my-versions'] }),
   })
 
   return (
     <div className="space-y-2">
       <p className="text-xs text-slate-400">
-        O Bitman busca de novo <span className="break-all">{game.repository_url}</span> (<code>{game.default_ref}</code>).
-        {stopped && ' Corrija o repositório antes de reenviar.'}
+        O Bitman busca de novo <span className="break-all">{game.repository_url}</span>.{stopped && ' Corrija o repositório antes de reenviar.'}
       </p>
+      <TextField
+        label="Branch ou tag (opcional)"
+        placeholder={game.default_ref}
+        value={ref}
+        onChange={(e) => setRef(e.target.value)}
+        maxLength={255}
+        error={fieldErrors(mutation.error).ref}
+      />
       <Button variant="secondary" onClick={() => mutation.mutate()} disabled={mutation.isPending}>
         {stopped ? 'Enviar novamente' : 'Enviar nova versão'}
       </Button>
-      {mutation.isError && <Alert tone="error">{errorMessage(mutation.error)}</Alert>}
+      {mutation.isError && !fieldErrors(mutation.error).ref && <Alert tone="error">{errorMessage(mutation.error)}</Alert>}
     </div>
   )
 }
@@ -92,6 +80,9 @@ function GameCard({ game, version }: { game: Game; version: MyVersion | undefine
           </Link>
         )}
         {version && <StopReason version={version} />}
+        <Link to={`/desenvolvedor/jogos/${encodeURIComponent(game.id)}`} className="inline-block text-sm text-emerald-400 hover:underline">
+          Histórico de versões
+        </Link>
         {canResubmit && <ResubmitButton game={game} stopped={stopped} />}
       </div>
     </li>

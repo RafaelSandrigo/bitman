@@ -251,6 +251,11 @@ sequenceDiagram
     Admin->>API: POST /admin/versions/{id}/approve-commit
 ```
 
+**Reenvio pelo dono.** `POST /me/games/{id}/versions` cria a versão seguinte, de volta ao Portão 0. O corpo aceita
+`ref` (opcional, M1): outra branch ou tag só para esta versão, validada pelo `GitRef` e registrada no
+`versioning.import-requested`. Sem `ref`, vale a do jogo. `GET /me/games/{id}/versions` é o histórico completo do
+jogo para o dono (M2).
+
 ### Publicação
 
 `PublishVersion` (em uma transação, com a versão e o jogo travados): verifica I6 lendo cada blob da

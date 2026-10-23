@@ -43,7 +43,23 @@ export async function listMyVersions() {
   return (await apiGet('/api/v1/me/versions', z.object({ data: z.array(MyVersionSchema) }))).data
 }
 
-/** Reenvio: nova versão pela URL e ref atuais do jogo, de volta à autorização do admin. */
-export async function resubmitGame(gameId: string) {
-  return (await apiSend('POST', `/api/v1/me/games/${encodeURIComponent(gameId)}/versions`, z.object({ data: MyVersionSchema }))).data
+/** Reenvio: nova versão pela URL do jogo e a ref dele (ou outra, só para esta versão: M1), de volta à autorização do admin. */
+export async function resubmitGame(gameId: string, ref?: string) {
+  const body = ref ? { ref } : {}
+  return (await apiSend('POST', `/api/v1/me/games/${encodeURIComponent(gameId)}/versions`, z.object({ data: MyVersionSchema }), body)).data
+}
+
+const HistoryPageSchema = z.object({
+  data: z.array(MyVersionSchema),
+  meta: z.object({
+    game: z.object({ id: z.string(), name: z.string(), slug: z.string() }),
+    current_page: z.number(),
+    last_page: z.number(),
+    total: z.number(),
+  }),
+})
+
+/** M2: todas as versões de um jogo do dono. */
+export function listMyGameVersions(gameId: string, page: number) {
+  return apiGet(`/api/v1/me/games/${encodeURIComponent(gameId)}/versions?page=${page}`, HistoryPageSchema)
 }

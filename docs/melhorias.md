@@ -11,8 +11,6 @@ anotado no commit.
 
 | # | Melhoria | Problema hoje | Proposta | Origem |
 |---|---|---|---|---|
-| M1 | Trocar a ref ao reenviar | O reenvio usa sempre a URL e a ref cadastradas no jogo. Quem publica por tag (`v1.0`) precisa de outra ref para corrigir | Campo opcional de branch/tag no **Enviar novamente**, validado pelo `GitRef` e auditado | Teste manual da Fase 3 (2026-10-12) |
-| M2 | Histórico de versões para o dono | "Meus jogos" mostra só a versão mais recente de cada jogo | Página do jogo do dono com todas as versões, estados e motivos | Fase 3 (reenvio) |
 | M4 | Fixture de redirect real | `http.followRedirects=false` e o código `redirected` são testados, mas sem um redirect HTTP de verdade | Servidor HTTPS falso dentro da allowlist só no harness da sandbox | Fase 3 |
 | M5 | Dividir o bundle do frontend | O build avisa que o chunk principal passou de 500 kB | `import()` dinâmico por área (admin, desenvolvedor) nas rotas | Build da Fase 3 |
 | M6 | Realce de sintaxe no Portão 2 | O visualizador mostra texto puro, com números de linha | Tokenizar no cliente e renderizar os tokens como elementos React (nunca HTML gerado por biblioteca), mantendo J5 | Fase 4 |

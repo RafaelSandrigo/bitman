@@ -20,6 +20,7 @@ import { GamePage } from '../features/catalog/pages/GamePage'
 import { BecomeDeveloperPage } from '../features/developer/pages/BecomeDeveloperPage'
 import { HomePage } from '../features/catalog/pages/HomePage'
 import { MyScoresPage } from '../features/play/pages/MyScoresPage'
+import { MyGameHistoryPage } from '../features/submissions/pages/MyGameHistoryPage'
 import { MyGamesPage } from '../features/submissions/pages/MyGamesPage'
 import { SubmitGamePage } from '../features/submissions/pages/SubmitGamePage'
 import { AdminGate, GuestOnly, RequireAuth, RequirePermission } from './guards'
@@ -60,6 +61,7 @@ const routes: RouteObject[] = [
         children: [
           { index: true, element: <Navigate to="jogos" replace /> },
           { path: 'jogos', element: <MyGamesPage /> },
+          { path: 'jogos/:id', element: <MyGameHistoryPage /> },
           { path: 'enviar', element: <SubmitGamePage /> },
         ],
       },

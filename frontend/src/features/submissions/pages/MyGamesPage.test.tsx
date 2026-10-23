@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
 import { catalogHandler, makeGame } from '../../../test/games'
@@ -64,6 +64,67 @@ describe('MyGamesPage', () => {
     expect(within(card).queryByRole('button', { name: 'Enviar novamente' })).not.toBeInTheDocument()
     expect(within(card).getByText(/versão 2/)).toBeInTheDocument()
     expect(posted).toBe(1)
+  })
+
+  it('M1: reenvia com outra branch ou tag, só para esta versão', async () => {
+    const game = makeGame({ name: 'Snake', default_ref: 'main' })
+    const bodies: unknown[] = []
+    server.use(
+      ...sessionHandlers(makeDeveloper()).handlers,
+      http.get('/api/v1/me/games', () => HttpResponse.json({ data: [game] })),
+      http.get('/api/v1/me/versions', () => HttpResponse.json({ data: [makeMyVersion({ game_id: game.id, status: 'published', in_progress: false })] })),
+      http.post(`/api/v1/me/games/${game.id}/versions`, async ({ request }) => {
+        bodies.push(await request.json())
+        return HttpResponse.json({ data: makeMyVersion({ game_id: game.id, number: 2, requested_ref: 'v1.1' }) }, { status: 201 })
+      }),
+    )
+    const { user } = renderAt('/desenvolvedor/jogos')
+
+    const card = await screen.findByRole('listitem', { name: 'Snake' })
+    await user.type(await within(card).findByLabelText('Branch ou tag (opcional)'), 'v1.1')
+    await user.click(within(card).getByRole('button', { name: 'Enviar nova versão' }))
+
+    await waitFor(() => expect(bodies).toEqual([{ ref: 'v1.1' }]))
+  })
+
+  it('M1: ref recusada pelo servidor aparece no campo', async () => {
+    const game = makeGame({ name: 'Snake' })
+    server.use(
+      ...sessionHandlers(makeDeveloper()).handlers,
+      http.get('/api/v1/me/games', () => HttpResponse.json({ data: [game] })),
+      http.get('/api/v1/me/versions', () => HttpResponse.json({ data: [makeMyVersion({ game_id: game.id, status: 'fetch_failed', in_progress: false })] })),
+      http.post(`/api/v1/me/games/${game.id}/versions`, () =>
+        HttpResponse.json({ message: 'x', errors: { ref: ['Informe uma branch ou tag válida.'] } }, { status: 422 }),
+      ),
+    )
+    const { user } = renderAt('/desenvolvedor/jogos')
+
+    const card = await screen.findByRole('listitem', { name: 'Snake' })
+    await user.type(await within(card).findByLabelText('Branch ou tag (opcional)'), '--x')
+    await user.click(within(card).getByRole('button', { name: 'Enviar novamente' }))
+
+    expect(await within(card).findByText('Informe uma branch ou tag válida.')).toBeInTheDocument()
+  })
+
+  it('M2: o histórico mostra todas as versões do jogo, com estado e motivo', async () => {
+    const game = makeGame({ name: 'Snake' })
+    server.use(
+      ...sessionHandlers(makeDeveloper()).handlers,
+      http.get(`/api/v1/me/games/${game.id}/versions`, () =>
+        HttpResponse.json({
+          data: [
+            makeMyVersion({ game_id: game.id, number: 2, status: 'published', in_progress: false }),
+            makeMyVersion({ game_id: game.id, number: 1, status: 'rejected', in_progress: false, rejection_reason: 'Minerador no game.js.' }),
+          ],
+          meta: { game: { id: game.id, name: 'Snake', slug: 'snake' }, current_page: 1, last_page: 1, total: 2 },
+        }),
+      ),
+    )
+    renderAt(`/desenvolvedor/jogos/${game.id}`)
+
+    expect(await screen.findByRole('heading', { name: 'Snake: histórico de versões' })).toBeInTheDocument()
+    expect(within(screen.getByRole('listitem', { name: 'Versão 2' })).getByText('Publicada')).toBeInTheDocument()
+    expect(within(screen.getByRole('listitem', { name: 'Versão 1' })).getByText('Motivo: Minerador no game.js.')).toBeInTheDocument()
   })
 
   it('mostra o motivo da rejeição do admin e a falha da busca', async () => {

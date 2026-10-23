@@ -35,7 +35,8 @@ final readonly class RequestNewImport
         private DomainEventPublisher $publisher,
     ) {}
 
-    public function __invoke(User $actor, string $gameId): GameVersion
+    /** @param  GitRef|null  $ref  M1: outra branch ou tag só para esta versão; `null` usa a do jogo */
+    public function __invoke(User $actor, string $gameId, ?GitRef $ref = null): GameVersion
     {
         $game = Game::findOrFail($gameId);
         $gate = $this->gate->forUser($actor);
@@ -54,11 +55,11 @@ final readonly class RequestNewImport
         }
 
         try {
-            return $this->db->transaction(function () use ($actor, $game, $gate): GameVersion {
+            return $this->db->transaction(function () use ($actor, $game, $gate, $ref): GameVersion {
                 $version = GameVersion::requestImport(
                     $game->id,
                     RepositoryUrl::fromString($game->repository_url),
-                    GitRef::fromString($game->default_ref),
+                    $ref ?? GitRef::fromString($game->default_ref),
                     $actor->id,
                 );
                 if ($gate->allows(Permission::AuthorizeImports->value)) {
