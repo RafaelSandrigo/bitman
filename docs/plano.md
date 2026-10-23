@@ -193,6 +193,7 @@ e URI) depois do fluxo completo.
 | Logs | Canal `stderr` em JSON estruturado por padrão (`JsonFormatter`) | [convencoes.md](convencoes.md#logs) |
 | M10 | Aviso **Há uma nova versão do Bitman — Recarregar**: `version.json` com o commit do release, comparado com o do bundle ao focar a aba e a cada 5 minutos | [implantacao.md](implantacao.md#make-release) |
 | M7 | Diff linha a linha no Portão 2 para arquivo `modified`: o conteúdo anterior vem do archive da versão no ar, conferido pelo hash. Abre em **Mudanças**, com **Arquivo completo** a um clique | J5 |
+| M3 | E-mail ao dono quando a versão para (com o motivo) ou vai ao ar, e resumo diário ao admin das filas dos portões | [arquitetura.md](arquitetura.md#e-mails) |
 
 ## Checklist de lançamento
 

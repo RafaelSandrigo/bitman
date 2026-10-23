@@ -194,6 +194,17 @@ jogo (`/admin/auditoria?game_id=…`, também ligada da página do jogo e das su
 
 O teste `EndToEndPublicationTest` responde cada uma dessas perguntas pela API, a partir do fluxo completo.
 
+### E-mails
+
+Todos saem pela fila (`default`) e só para contas com e-mail confirmado. Nenhum cita dados de jogador.
+
+| E-mail | Para quem | Quando |
+|---|---|---|
+| Verificação e redefinição de senha | o usuário | cadastro e "esqueci a senha" |
+| Resultado da versão (M3) | o dono do jogo | importação recusada, busca falhou, reprovada na validação, commit ou versão rejeitados (com o motivo) e versão no ar |
+| Resumo das filas (M3) | quem tem `versions.authorize-import` | todo dia às 12h UTC (`bitman:admin-digest`), só se algum portão tem versão esperando |
+| Score sinalizado (M21) | quem tem `scores.moderate` | um score é sinalizado; no máximo um por jogo por hora |
+
 ### API e autenticação
 
 - Rotas em `/api/v1`. Cada módulo declara as suas em `Http/routes.php` (públicas) e `Http/admin-routes.php`

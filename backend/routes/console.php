@@ -12,3 +12,6 @@ Artisan::command('inspire', function (): void {
 
 // M12: o served/ confere com as versões no ar; corrige a partir do archive e alerta nos logs.
 Schedule::command('bitman:reconcile-served')->hourly()->withoutOverlapping();
+
+// M3: resumo das filas do admin, todo dia às 9h de Brasília (12h UTC). Só sai se houver pendências.
+Schedule::command('bitman:admin-digest')->dailyAt('12:00');

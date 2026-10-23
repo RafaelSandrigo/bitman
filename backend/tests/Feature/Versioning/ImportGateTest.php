@@ -59,7 +59,8 @@ it('o admin rejeita a importação com motivo: nenhum acesso ao repositório (I2
         ->and($entry->action)->toBe('versioning.import-rejected')
         ->and($entry->reason)->toBe('Repositório não parece ser um jogo.');
 
-    Queue::assertNothingPushed();
+    // O e-mail ao dono (M3) vai pela fila; a busca, não.
+    Queue::assertNotPushed(FetchRepositoryJob::class);
     Http::assertNothingSent();
 });
 
