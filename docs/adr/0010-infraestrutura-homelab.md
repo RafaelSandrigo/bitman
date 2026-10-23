@@ -25,6 +25,13 @@ roteamento e deploy já padronizados (referências: `deploy-hub/README.md`,
 - E-mail: Resend via SMTP, como no CPO. O Bitman usa API key própria, com permissão só de envio, e remetente
   `nao-responda@bitman.sandrigo.com.br`. Sem a chave, `MAIL_MAILER=log`.
 
+## Atualização (2026-10-22): produção por imagens do commit
+O "um único ambiente" continua, mas a produção deixou de montar o código: `app`, `queue`, `scheduler`, `bitman-web`,
+`bitman-games`, `git-sandbox` e `egress-proxy` rodam imagens geradas de um `git archive` do commit (`make release`), e
+o desenvolvimento usa os serviços `test` e `frontend` do perfil `dev`, com bind mount. O deploy-hub só faz `git fetch`
+e `make release REF=origin/main`, sem tocar na árvore de trabalho. Mudanças sem commit nunca vão para produção
+(decisão do Rafael; detalhes em [implantacao.md](../implantacao.md)).
+
 ## Consequências
 - O projeto convive com os demais sem colisão de nomes ou portas, e sem expor nada além dos dois hosts.
 - Os testes não podem depender da Cloudflare. Os comportamentos de borda (IP real, headers e cache) são

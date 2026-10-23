@@ -10,6 +10,9 @@ Thumbs.db
 .env.*
 !.env.example
 
-# Build do frontend servido pelo bitman-web
+# Build do frontend (o de produção é feito na imagem do bitman-web)
 frontend/dist/
+
+# Contexto das imagens de produção: git archive do commit (make release)
+.release/
 .muxel/

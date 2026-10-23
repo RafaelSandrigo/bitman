@@ -72,6 +72,8 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+      - name: Imagens de produção (código embutido, sem dependências de dev)
+        run: sh tests/infra/release-images.sh
       - name: Headers e allowlist da origem de jogos
         run: sh tests/infra/games-origin.sh
       - name: Thumbnails servidas pelo hub

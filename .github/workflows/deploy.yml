@@ -1,0 +1,53 @@
+name: deploy
+
+# Só depois que o CI terminar com sucesso em main, nunca em paralelo com os testes.
+# workflow_dispatch permite redisparar manualmente. Detalhes em docs/implantacao.md.
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: deploy-bitman
+    runs-on: ubuntu-24.04
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+    steps:
+      - name: Disparar deploy no hub
+        env:
+          CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+          DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN_BITMAN }}
+        run: |
+          # Enquanto os segredos não forem cadastrados, o deploy é pulado (não reprova o pipeline).
+          if [ -z "$CF_ACCESS_CLIENT_ID" ] || [ -z "$CF_ACCESS_CLIENT_SECRET" ] || [ -z "$DEPLOY_TOKEN" ]; then
+            echo "::warning::Segredos do deploy ausentes (CF_ACCESS_CLIENT_ID, CF_ACCESS_CLIENT_SECRET, DEPLOY_TOKEN_BITMAN): deploy pulado"
+            exit 0
+          fi
+
+          # Os segredos vão por arquivo de config do curl (stdin), não pela linha de comando.
+          response=$(printf 'header = "CF-Access-Client-Id: %s"\nheader = "CF-Access-Client-Secret: %s"\nheader = "X-Deploy-Token: %s"\n' \
+              "$CF_ACCESS_CLIENT_ID" "$CF_ACCESS_CLIENT_SECRET" "$DEPLOY_TOKEN" \
+            | curl -s -w "\n%{http_code}" -X POST -K - https://deploy.sandrigo.com.br/hooks/deploy-bitman)
+
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | sed '$d')
+          echo "HTTP status: $http_code"
+          echo "Resposta: $body"
+
+          # 200 = hash aprovado e deploy iniciado. O resultado do build chega pelo Telegram do hub.
+          if [ "$http_code" != "200" ]; then
+            echo "::error::Deploy não foi aceito pelo hub (HTTP $http_code)"
+            exit 1
+          fi

@@ -1,0 +1,30 @@
+    {
+        "id": "deploy-bitman",
+        "execute-command": "/usr/local/bin/enqueue.sh",
+        "command-working-directory": "/",
+        "pass-arguments-to-command": [
+            {
+                "source": "string",
+                "name": "bitman"
+            }
+        ],
+        "trigger-rule-mismatch-http-response-code": 403,
+        "include-command-output-in-response": true,
+        "include-command-output-in-response-on-error": true,
+        "response-headers": [
+            {
+                "name": "Content-Type",
+                "value": "application/json"
+            }
+        ],
+        "trigger-rule": {
+            "match": {
+                "type": "value",
+                "value": "{{ getenv "X_DEPLOY_TOKEN_BITMAN" | js }}",
+                "parameter": {
+                    "source": "header",
+                    "name": "X-Deploy-Token"
+                }
+            }
+        }
+    }

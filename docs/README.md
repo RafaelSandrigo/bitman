@@ -12,6 +12,7 @@ isolados no navegador. Cada jogo tem o seu próprio ranking.
 | [plano.md](plano.md) | Roadmap em fases, entregas e critérios de pronto |
 | [melhorias.md](melhorias.md) | Melhorias identificadas pelo caminho, ainda sem fase (backlog) |
 | [arquitetura.md](arquitetura.md) | Containers, módulos, camadas e regras de dependência |
+| [implantacao.md](implantacao.md) | Como a produção é atualizada: `make release`, deploy-hub, ativação e como reverter |
 | [dominio.md](dominio.md) | Linguagem ubíqua, agregados, máquinas de estado e invariantes |
 | [seguranca.md](seguranca.md) | Modelo de ameaças e mitigação de cada uma |
 | [protocolo-do-jogo.md](protocolo-do-jogo.md) | Contrato para quem desenvolve jogos (arquivos, limites, envio de score) |

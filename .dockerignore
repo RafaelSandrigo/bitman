@@ -1,0 +1,11 @@
+# Contexto das imagens de produção (raiz de um "git archive"). Fora do que vai para a imagem.
+.git
+backend/vendor
+backend/tests
+backend/.env*
+backend/storage/logs/*.log
+frontend/node_modules
+frontend/dist
+docs
+examples
+tests

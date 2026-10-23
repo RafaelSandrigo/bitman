@@ -167,8 +167,12 @@ PostgreSQL, no mesmo instante. ✅ A limitação dos scores aparece na UI do ran
 linha do tempo do jogo, e `EndToEndPublicationTest` confere as respostas (quem, quando, URL, commit, arquivo, hash, versão
 e URI) depois do fluxo completo.
 
-## Fase 8 — Endurecimento e implantação ⬜
+## Fase 8 — Endurecimento e implantação 🟨
 
+- ✅ **Deploy** ([implantacao.md](implantacao.md)): produção por imagens geradas de um commit (`make release`), com o
+  código embutido e migrations antes da troca dos containers; desenvolvimento no perfil `dev`. Script do deploy-hub e
+  trecho do hook em `deploy/`, workflow `deploy` depois do CI verde. `tests/infra/release-images.sh` confere as imagens.
+  Falta a ativação pelo Rafael (deploy key, tokens, Cloudflare Access e aprovação do hash).
 - Executar o [checklist de lançamento](#checklist-de-lançamento).
 - Revisão de segurança completa contra [seguranca.md](seguranca.md).
 - `docs/implantacao.md`: labels do Traefik para `bitman` e `bitman-games`, segredos no `.env` da raiz (fora do git), ativação do hook do deploy-hub, backups dos volumes
@@ -182,10 +186,10 @@ Executado quando o Bitman sair do pré-lançamento:
 
 - [x] Remover o middleware `bitman-auth` (autenticação básica) das labels do `bitman-web` — antecipado em 13/10/2026.
 - [ ] Remover o middleware `bitman-noindex` das labels do `bitman-web` e o `noindex` do `index.html`.
-- [ ] Imagem PHP de produção com o código embutido, `composer install --no-dev` (o Boost sai junto) e `opcache.validate_timestamps=0`.
-- [ ] Build do frontend dentro da imagem do `bitman-web`; remover o serviço `frontend` (watch).
-- [ ] Conferir `APP_ENV=production` e `APP_DEBUG=false`.
-- [ ] Ativar o deploy pelo deploy-hub (script, hook, tokens e aprovação do hash).
+- [x] Imagem PHP de produção com o código embutido, `composer install --no-dev` (o Boost sai junto) e `opcache.validate_timestamps=0` (2026-10-22).
+- [x] Build do frontend dentro da imagem do `bitman-web`; o serviço `frontend` passou ao perfil `dev`, sem watch (2026-10-22).
+- [x] Conferir `APP_ENV=production` e `APP_DEBUG=false` (conferido no `.env` em 2026-10-22).
+- [ ] Ativar o deploy pelo deploy-hub: script e hook prontos em `deploy/`; faltam deploy key, tokens, Cloudflare Access e aprovação do hash ([implantacao.md](implantacao.md#ativação-passos-do-rafael)).
 - [ ] Teste de fumaça pós-deploy (headers e hash dos arquivos servidos).
 - [ ] Backups dos volumes `postgres_data`, `artifacts` e `media`.
 - [x] Resend configurado (`MAIL_MAILER=smtp` e `MAIL_PASSWORD`) e um e-mail real de verificação recebido (2026-10-11).

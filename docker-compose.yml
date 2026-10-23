@@ -5,8 +5,11 @@
 #   - Sem "ports:". Só bitman-web e bitman-games entram na prod-network.
 #   - Este diretório é PRODUÇÃO: use o Makefile; nunca "docker ... prune" nem comandos fora do projeto.
 #
-# Pré-lançamento (docs/plano.md): o código é montado por bind mount e o hub fica atrás
-# de autenticação básica no Traefik. O checklist de lançamento remove os dois.
+# Produção (docs/implantacao.md): app, queue, scheduler, bitman-web, bitman-games, git-sandbox e
+# egress-proxy rodam imagens geradas de um commit por "make release" (contexto ./.release, um
+# "git archive" do commit). Editar arquivos aqui não muda produção até o próximo release.
+# Desenvolvimento: os serviços do perfil "dev" (test e frontend) montam o código por bind mount
+# e só rodam sob demanda (make test, make composer, make npm).
 
 name: bitman
 
@@ -15,13 +18,12 @@ x-limits: &small
   memory: 128M
 
 x-php: &php
-  image: bitman-php:dev
+  image: bitman-php:release
   # A imagem é construída pelo serviço "app" (evita três builds concorrentes da mesma tag).
   pull_policy: never
   env_file: [.env]
   restart: unless-stopped
   volumes:
-    - ./backend:/var/www/html
     # Fonte única de configuração: o .env da raiz (o Laravel procura por backend/.env).
     - ./.env:/var/www/html/.env:ro
     - quarantine:/var/bitman/quarantine
@@ -33,13 +35,16 @@ x-php: &php
 
 services:
   bitman-web:
-    image: nginx:1.29-alpine
+    image: bitman-web:release
+    build:
+      context: ./.release
+      dockerfile: docker/web/Dockerfile
+      args:
+        VITE_GAMES_ORIGIN: ${GAMES_ORIGIN}
     restart: unless-stopped
     environment:
       GAMES_ORIGIN: ${GAMES_ORIGIN}
     volumes:
-      - ./docker/web/templates:/etc/nginx/templates:ro
-      - ./frontend/dist:/srv/spa:ro
       # Thumbnails já re-codificadas em WebP pelo backend (A4).
       - media:/srv/media:ro
     depends_on: [app]
@@ -66,13 +71,15 @@ services:
       - "traefik.http.middlewares.bitman-noindex.headers.customresponseheaders.X-Robots-Tag=noindex, nofollow"
 
   bitman-games:
-    image: nginx:1.29-alpine
+    image: bitman-games:release
+    build:
+      context: ./.release
+      dockerfile: docker/games/Dockerfile
     restart: unless-stopped
     environment:
       GAMES_ORIGIN: ${GAMES_ORIGIN}
       HUB_ORIGIN: ${HUB_ORIGIN}
     volumes:
-      - ./docker/games/templates:/etc/nginx/templates:ro
       - type: volume
         source: artifacts
         target: /srv/games
@@ -102,7 +109,11 @@ services:
   app:
     <<: *php
     build:
-      context: ./docker/php
+      context: ./.release
+      dockerfile: docker/php/Dockerfile
+      target: prod
+      args:
+        CONFIG_DIR: docker/php
     networks: [internal, egress]
     deploy:
       resources:
@@ -131,11 +142,32 @@ services:
       resources:
         limits: *small
 
+  # Desenvolvimento: composer, Pest, Pint e Larastan sobre o código montado (banco bitman_test).
+  test:
+    image: bitman-php:dev
+    build:
+      context: ./docker/php
+      target: dev
+    profiles: [dev]
+    env_file: [.env]
+    volumes:
+      - ./backend:/var/www/html
+      - ./.env:/var/www/html/.env:ro
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    networks: [internal, egress]
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+
+  # Desenvolvimento: npm, Vitest, oxlint e tsc. O build de produção é feito na imagem do bitman-web.
   frontend:
     image: node:22-alpine
-    restart: unless-stopped
+    profiles: [dev]
     working_dir: /app
-    command: ["npm", "run", "build:watch"]
     environment:
       VITE_GAMES_ORIGIN: ${GAMES_ORIGIN}
     volumes:
@@ -189,9 +221,10 @@ services:
       REDIS_PASSWORD: ${REDIS_PASSWORD}
 
   git-sandbox:
-    image: bitman-git-sandbox
+    # Tag própria: tests/infra/sandbox-fixtures.sh gera "bitman-git-sandbox" da árvore de trabalho.
+    image: bitman-git-sandbox:release
     build:
-      context: ./docker/git-sandbox
+      context: ./.release/docker/git-sandbox
     restart: unless-stopped
     read_only: true
     tmpfs:
@@ -221,9 +254,9 @@ services:
       retries: 3
 
   egress-proxy:
-    image: bitman-egress-proxy
+    image: bitman-egress-proxy:release
     build:
-      context: ./docker/egress-proxy
+      context: ./.release/docker/egress-proxy
     restart: unless-stopped
     read_only: true
     cap_drop: [ALL]

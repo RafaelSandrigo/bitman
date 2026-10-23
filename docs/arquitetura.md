@@ -68,15 +68,18 @@ Ela segue as convenções do servidor compartilhado ([ADR 0010](adr/0010-infraes
   **Não há configuração na Cloudflare.**
 - **Um ambiente só:** não existe ambiente de desenvolvimento separado. O projeto é desenvolvido direto no
   servidor, em `/mnt/Dados/prog/prod/bitman`, num único `docker-compose.yml` (`name: bitman`), sempre
-  operado pelo `Makefile`. Até o lançamento vale o **modo pré-lançamento** (abaixo).
+  operado pelo `Makefile`. A produção roda imagens geradas de um commit (`make release`), e o desenvolvimento usa os
+  serviços do perfil `dev` com bind mount: editar aqui não muda a produção ([implantacao.md](implantacao.md)).
+  Até o lançamento vale o **modo pré-lançamento** (abaixo).
 - **Dados:** volumes Docker nomeados (PostgreSQL, Redis, quarentena, artefatos, thumbnails e `node_modules` do frontend), nunca
   bind mount em `/mnt/Dados` (é NTFS, onde `chmod` não tem efeito). Os segredos ficam no `.env` da raiz, ignorado
   pelo git e entregue aos containers por `env_file` e, montado como `backend/.env`, somente leitura (padrão Carphook).
   Só o `.env.example` é versionado.
-- **Testes:** rodam dentro dos containers, no banco `bitman_test` do mesmo PostgreSQL. O `phpunit.xml` força esse banco,
+- **Testes:** rodam no serviço `test` (perfil `dev`, imagem `bitman-php:dev`), no banco `bitman_test` do mesmo PostgreSQL. O `phpunit.xml` força esse banco,
   e um teste-trava (`tests/Feature/TestEnvironmentTest.php`) falha se algum dia apontar para outro.
-- **Deploy (a partir do lançamento):** GitHub Actions (CI verde em `main`) → `POST https://deploy.sandrigo.com.br/hooks/deploy-bitman`
-  → `deploy-hub/scripts/deploy-bitman.sh` (executado só depois que o Rafael aprova o hash).
+- **Deploy:** GitHub Actions (CI verde em `main`) → `POST https://deploy.sandrigo.com.br/hooks/deploy-bitman`
+  → `deploy-hub/scripts/deploy-bitman.sh` (executado só depois que o Rafael aprova o hash) → `make release REF=origin/main`.
+  Detalhes e ativação em [implantacao.md](implantacao.md).
 
 ### Modo pré-lançamento
 
@@ -85,9 +88,6 @@ Enquanto não há usuários reais:
 | Item | Pré-lançamento | No lançamento (ver [plano.md](plano.md#checklist-de-lançamento)) |
 |---|---|---|
 | Indexação do hub | `X-Robots-Tag: noindex` no Traefik e `noindex` no `index.html` | Removidos |
-| Código PHP | Bind mount de `./backend` (mudança vale na hora) | Imagem com o código embutido, sem dependências de dev |
-| Frontend | Container `frontend` com `vite build --watch` gerando `frontend/dist` | Build feito na imagem do `bitman-web` |
-| OPcache | Revalida timestamps | `validate_timestamps=0` |
 
 O hub e o host de jogos são públicos (a autenticação básica do hub foi retirada em 13/10/2026). O host de jogos
 só serve jogos publicados, em caminhos UUID não adivinháveis, com `noindex`.
@@ -96,12 +96,13 @@ só serve jogos publicados, em caminhos UUID não adivinháveis, com `noindex`.
 
 | Serviço | Papel | Redes | Observações |
 |---|---|---|---|
-| `bitman-web` | nginx: serve `frontend/dist` e as thumbnails (`/media/thumbnails`, volume `media` somente leitura) e encaminha `/api`, `/sanctum` e `/up` para o php-fpm | prod-network, internal | SPA e API na **mesma origem** (cookies Sanctum sem CORS). CSP do hub e IP real via `CF-Connecting-IP` |
+| `bitman-web` | nginx (imagem `bitman-web:release`): serve a SPA compilada na imagem e as thumbnails (`/media/thumbnails`, volume `media` somente leitura) e encaminha `/api`, `/sanctum` e `/up` para o php-fpm | prod-network, internal | SPA e API na **mesma origem** (cookies Sanctum sem CORS). CSP do hub e IP real via `CF-Connecting-IP` |
 | `bitman-games` | nginx estático da origem de jogos | prod-network | Monta o subdiretório `served` do volume de artefatos, somente leitura. Só serve `/{uuid}/{index.html,style.css,game.js}`; o resto é 404 |
-| `app` | Laravel (php-fpm 8.5) | internal, egress | Imagem `bitman-php` (construída só por este serviço) |
+| `app` | Laravel (php-fpm 8.5) | internal, egress | Imagem `bitman-php:release` (código embutido, construída só por este serviço) |
 | `queue` | `queue:work` (filas `ingestion` e `default`) | internal, egress, sandbox | É o único que fala com a sandbox. Roda como `www-data` |
 | `scheduler` | `schedule:work` | internal, egress | Roda como `www-data` |
-| `frontend` | `vite build --watch` (pré-lançamento) | egress | `node_modules` em volume próprio (binários da imagem alpine) |
+| `test` | Perfil `dev`: composer, Pest, Pint e Larastan sobre `./backend` montado | internal, egress | Imagem `bitman-php:dev`. Só roda sob demanda (`make test-back`, `make composer`) |
+| `frontend` | Perfil `dev`: npm, Vitest, oxlint e tsc sobre `./frontend` montado | egress | `node_modules` em volume próprio (binários da imagem alpine). Só roda sob demanda |
 | `postgres` | PostgreSQL 17 (bancos `bitman` e `bitman_test`) | internal | — |
 | `redis` | Redis 8.2 com senha: fila, cache, sessão e rate limit | internal | — |
 | `git-sandbox` | `POST /fetch` (token): clone bare raso e manifesto (commit, árvore, blobs pedidos) | sandbox | Usuário não-root, rootfs read-only, `tmpfs` de 256 MB, `cap_drop: ALL`, `no-new-privileges`, limites de CPU, memória e pids |

@@ -3,23 +3,38 @@
 # Nada de "docker ... prune", nada global, nada em containers de outros projetos.
 
 COMPOSE := docker compose
-PHP     := $(COMPOSE) run --rm -T app
+# Desenvolvimento (perfil "dev"): código por bind mount. Produção roda as imagens do "make release".
+PHP     := $(COMPOSE) run --rm -T test
 NODE    := $(COMPOSE) run --rm -T --no-deps -e NPM_CONFIG_UPDATE_NOTIFIER=false frontend
+# Commit que o "make release" coloca no ar (o deploy-hub usa origin/main).
+REF     ?= HEAD
 
 .DEFAULT_GOAL := help
-.PHONY: help init up down restart ps logs build sh migrate artisan composer npm \
-        test test-back test-front test-infra lint stan check basic-auth
+.PHONY: help init release up down restart ps logs build sh migrate artisan composer npm \
+        test test-back test-front test-infra lint stan check
 
 help: ## Lista os comandos
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-12s %s\n", $$1, $$2}'
 
 init: ## Primeira instalação: cria os diretórios dos volumes (dono www-data) e instala as dependências
 	$(COMPOSE) run --rm --no-deps -T --entrypoint sh app -c 'mkdir -p /var/bitman/artifacts/served /var/bitman/artifacts/archive /var/bitman/quarantine && chown -R www-data:www-data /var/bitman/artifacts /var/bitman/quarantine && chmod 755 /var/bitman/artifacts /var/bitman/artifacts/served /var/bitman/artifacts/archive'
-	$(COMPOSE) run --rm --no-deps -T app composer install
+	$(PHP) composer install
 	$(NODE) npm ci
 
-up: ## Sobe a stack do Bitman
-	$(COMPOSE) up -d --build --wait
+release: ## Deploy: imagens do commit REF (padrão HEAD), migrations e troca dos containers (docs/implantacao.md)
+	@git rev-parse --verify --quiet "$(REF)^{commit}" >/dev/null || { echo "release: ref inválida: $(REF)"; exit 1; }
+	@# A orquestração (este Makefile e o compose) vem da árvore de trabalho: precisa ser a do commit.
+	@git diff --quiet "$(REF)" -- docker-compose.yml Makefile || { echo "release: docker-compose.yml ou Makefile diferem de $(REF); faça commit ou atualize o diretório"; exit 1; }
+	rm -rf .release && mkdir .release && git archive "$(REF)" | tar -x -C .release
+	$(COMPOSE) build app bitman-web bitman-games git-sandbox egress-proxy
+	@# Migrations com a imagem nova antes da troca: se falharem, a versão atual continua no ar.
+	$(COMPOSE) run --rm -T app php artisan migrate --force
+	$(COMPOSE) run --rm -T app php artisan db:seed --class=RolesAndPermissionsSeeder --force
+	$(COMPOSE) up -d --wait --remove-orphans
+	@echo "release: $$(git rev-parse --short "$(REF)") no ar"
+
+up: ## Sobe a stack do Bitman com as imagens do último release
+	$(COMPOSE) up -d --wait
 
 down: ## Para a stack (preserva os volumes/dados)
 	$(COMPOSE) down
@@ -33,8 +48,8 @@ ps: ## Estado dos containers do projeto
 logs: ## Logs (ex.: make logs s=app)
 	$(COMPOSE) logs -f --tail=100 $(s)
 
-build: ## Reconstrói as imagens do projeto
-	$(COMPOSE) build
+build: ## Reconstrói a imagem de desenvolvimento (as de produção saem do make release)
+	$(COMPOSE) build test
 
 sh: ## Shell no container da aplicação
 	$(COMPOSE) exec app sh
@@ -60,7 +75,8 @@ test-back: ## Testes do backend (banco bitman_test)
 test-front: ## Testes do frontend
 	$(NODE) npm test
 
-test-infra: ## Testes de infraestrutura (origem de jogos, thumbnails, jogo de exemplo, fixtures e egress da sandbox)
+test-infra: ## Testes de infraestrutura (imagens de produção, origem de jogos, thumbnails, jogo de exemplo, fixtures e egress da sandbox)
+	sh tests/infra/release-images.sh
 	sh tests/infra/games-origin.sh
 	sh tests/infra/example-game.sh
 	sh tests/infra/hub-media.sh

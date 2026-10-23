@@ -21,9 +21,8 @@ bitman/
 
 ```bash
 cp .env.example .env      # preencha os segredos (APP_KEY, senhas, SANDBOX_TOKEN)
-make basic-auth USER=rafael PASS='senha'   # cole a linha gerada no .env (pré-lançamento)
-make init                 # volumes e dependências (dentro dos containers)
-make up                   # sobe a stack
+make init                 # volumes e dependências de desenvolvimento (dentro dos containers)
+make release              # gera as imagens do commit atual e sobe a stack (docs/implantacao.md)
 make migrate              # migrations + roles/permissões
 ```
 
@@ -39,6 +38,7 @@ make artisan c="user:grant-role seu@email admin"
 ```bash
 make help     # todos os comandos
 make check    # lint + análise estática + todos os testes (o mesmo que o CI)
+make release  # coloca o commit atual no ar (o deploy automático faz o mesmo com origin/main)
 make logs s=app
 ```
 
