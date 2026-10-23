@@ -6,6 +6,7 @@ namespace App\Modules\Play\Infrastructure;
 
 use App\Modules\Play\Domain\AnomalyPolicy;
 use App\Modules\Play\Domain\Events\ScoreHidden;
+use App\Modules\Play\Domain\Events\ScoreKept;
 use App\Modules\Play\Domain\Events\ScoreRecorded;
 use App\Modules\Play\Domain\Events\ScoreRestored;
 use App\Modules\Play\Domain\Leaderboard;
@@ -43,7 +44,7 @@ final class PlayServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        Event::listen([ScoreRecorded::class, ScoreHidden::class, ScoreRestored::class], ForgetCachedLeaderboard::class);
+        Event::listen([ScoreRecorded::class, ScoreHidden::class, ScoreRestored::class, ScoreKept::class], ForgetCachedLeaderboard::class);
 
         // S2: limite por jogador e jogo nas partidas (cada uma aceita um score) e por jogador nos envios.
         RateLimiter::for('game-sessions', function (Request $request): array {

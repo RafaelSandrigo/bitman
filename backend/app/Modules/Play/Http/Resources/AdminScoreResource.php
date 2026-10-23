@@ -35,6 +35,10 @@ final class AdminScoreResource extends JsonResource
                 'at' => $score->hidden_at?->toIso8601String(),
                 'reason' => $score->hide_reason,
             ] : null,
+            'flag_cleared' => $score->flag_cleared_at === null ? null : [
+                'by' => $score->flagClearedBy?->name,
+                'at' => $score->flag_cleared_at->toIso8601String(),
+            ],
             'created_at' => $score->created_at->toIso8601String(),
         ];
     }

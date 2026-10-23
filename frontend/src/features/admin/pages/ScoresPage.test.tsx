@@ -17,6 +17,7 @@ function makeScore(overrides: Partial<AdminScore> = {}): AdminScore {
     flagged: true,
     flag_reason: 'Acima de 3 × o p99 do jogo (100, com 20 scores).',
     hidden: null,
+    flag_cleared: null,
     created_at: '2026-10-13T12:00:00+00:00',
     ...overrides,
   }
@@ -25,6 +26,39 @@ function makeScore(overrides: Partial<AdminScore> = {}): AdminScore {
 const page = (data: AdminScore[]) => HttpResponse.json({ data, meta: { current_page: 1, last_page: 1, total: data.length } })
 
 describe('moderação de scores (S2)', () => {
+  it('M20: sinalizado em revisão fica fora do ranking; "Manter no ranking" decide', async () => {
+    let kept = false
+    server.use(
+      ...sessionHandlers(makeAdmin()).handlers,
+      http.get('/api/v1/admin/scores', () => page(kept ? [] : [makeScore()])),
+      http.post('/api/v1/admin/scores/:id/keep', () => {
+        kept = true
+        return HttpResponse.json({ data: makeScore({ flag_cleared: { by: 'Rafael', at: '2026-10-13T13:00:00+00:00' } }) })
+      }),
+    )
+    const { user } = renderAt('/admin/scores')
+
+    const item = await screen.findByRole('listitem', { name: 'Score de Ana em Snake' })
+    expect(item).toHaveTextContent('Em revisão: fora do ranking até você decidir.')
+    await user.click(within(item).getByRole('button', { name: 'Manter no ranking' }))
+
+    expect(await screen.findByText('Nenhum score aqui.')).toBeInTheDocument()
+    expect(kept).toBe(true)
+  })
+
+  it('M20: sinalizado já mantido mostra quem decidiu', async () => {
+    server.use(
+      ...sessionHandlers(makeAdmin()).handlers,
+      http.get('/api/v1/admin/scores', () => page([makeScore({ flag_cleared: { by: 'Rafael', at: '2026-10-13T13:00:00+00:00' } })])),
+    )
+    renderAt('/admin/scores?filtro=all')
+
+    const item = await screen.findByRole('listitem', { name: 'Score de Ana em Snake' })
+    expect(item).toHaveTextContent('Mantido no ranking por Rafael')
+    expect(within(item).queryByRole('button', { name: 'Manter no ranking' })).not.toBeInTheDocument()
+  })
+
+
   it('lista os sinalizados por padrão e oculta com motivo', async () => {
     const requests: string[] = []
     let hidden: unknown = null

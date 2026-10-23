@@ -28,6 +28,7 @@ const actionLabels: Record<string, string> = {
   'catalog.game-unblocked': 'Jogo desbloqueado',
   'play.score-hidden': 'Score ocultado do ranking',
   'play.score-restored': 'Score devolvido ao ranking',
+  'play.score-kept': 'Score sinalizado mantido no ranking',
 }
 
 /** Telas que mostram a entidade de uma entrada de auditoria. */

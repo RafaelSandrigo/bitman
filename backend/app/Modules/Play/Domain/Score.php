@@ -7,9 +7,11 @@ namespace App\Modules\Play\Domain;
 use App\Modules\Catalog\Domain\Game;
 use App\Modules\Identity\Domain\User;
 use App\Modules\Play\Domain\Events\ScoreHidden;
+use App\Modules\Play\Domain\Events\ScoreKept;
 use App\Modules\Play\Domain\Events\ScoreRestored;
 use App\Modules\Play\Domain\Exceptions\ScoreAlreadyHidden;
 use App\Modules\Play\Domain\Exceptions\ScoreNotHidden;
+use App\Modules\Play\Domain\Exceptions\ScoreNotInReview;
 use App\Modules\Versioning\Domain\DecisionReason;
 use App\Modules\Versioning\Domain\GameVersion;
 use App\Shared\Domain\EmitsDomainEvents;
@@ -25,8 +27,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * Resultado de uma sessão. Nasce só por `GameSession::recordScore()` ou, para a partida de visitante
  * salva numa conta, por `GameSession::recordGuestScore()`. O valor nunca muda; o admin
- * pode ocultá-lo do ranking (e devolvê-lo), sempre auditado. Sinalizado (S2) continua no ranking
- * até alguém decidir.
+ * pode ocultá-lo do ranking (e devolvê-lo), sempre auditado. Sinalizado (S2) fica fora do ranking,
+ * em revisão, até o admin mantê-lo (`keep()`) ou ocultá-lo (M20).
  *
  * @property string $id
  * @property string $game_session_id
@@ -39,12 +41,15 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string|null $hidden_by_id
  * @property CarbonImmutable|null $hidden_at
  * @property string|null $hide_reason
+ * @property string|null $flag_cleared_by_id
+ * @property CarbonImmutable|null $flag_cleared_at
  * @property CarbonImmutable $created_at
  * @property-read User $player
  * @property-read Game $game
  * @property-read GameSession $session
  * @property-read GameVersion $version
  * @property-read User|null $hiddenBy
+ * @property-read User|null $flagClearedBy
  */
 #[UseFactory(ScoreFactory::class)]
 final class Score extends Model implements EmitsDomainEvents
@@ -77,6 +82,25 @@ final class Score extends Model implements EmitsDomainEvents
         return $this->hidden_at !== null;
     }
 
+    /** Sinalizado, sem decisão do admin: fora do ranking até ser mantido ou oculto. */
+    public function isInReview(): bool
+    {
+        return $this->flagged && $this->flag_cleared_at === null && ! $this->isHidden();
+    }
+
+    /** M20: o admin conferiu o sinalizado e o mantém no ranking. */
+    public function keep(User $admin): void
+    {
+        if (! $this->isInReview()) {
+            throw new ScoreNotInReview;
+        }
+
+        $this->clearFlag($admin);
+        $this->save();
+
+        $this->recordEvent(new ScoreKept($this->id, $this->game_id, $this->user_id, $this->value, $admin->id));
+    }
+
     public function hide(User $admin, DecisionReason $reason): void
     {
         if ($this->isHidden()) {
@@ -100,9 +124,25 @@ final class Score extends Model implements EmitsDomainEvents
         $this->hidden_by_id = null;
         $this->hidden_at = null;
         $this->hide_reason = null;
+        // Devolver ao ranking é a decisão sobre o sinalizado: ele não volta para a revisão.
+        if ($this->flagged && $this->flag_cleared_at === null) {
+            $this->clearFlag($admin);
+        }
         $this->save();
 
         $this->recordEvent(new ScoreRestored($this->id, $this->game_id, $this->user_id, $this->value, $this->flagged, $admin->id));
+    }
+
+    private function clearFlag(User $admin): void
+    {
+        $this->flag_cleared_by_id = $admin->id;
+        $this->flag_cleared_at = CarbonImmutable::now();
+    }
+
+    /** @return BelongsTo<User, $this> */
+    public function flagClearedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'flag_cleared_by_id');
     }
 
     /** @return BelongsTo<User, $this> */
@@ -141,6 +181,7 @@ final class Score extends Model implements EmitsDomainEvents
             'value' => 'integer',
             'flagged' => 'boolean',
             'hidden_at' => 'immutable_datetime',
+            'flag_cleared_at' => 'immutable_datetime',
             'created_at' => 'immutable_datetime',
         ];
     }

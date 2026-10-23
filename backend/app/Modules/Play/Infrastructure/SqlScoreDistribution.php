@@ -8,6 +8,7 @@ use App\Modules\Play\Domain\ScoreDistribution;
 use App\Modules\Play\Domain\ScoreStatistics;
 use Illuminate\Database\ConnectionInterface;
 
+/** O padrão do jogo usa só os scores do ranking: um sinalizado em revisão não puxa o p99 para cima (M20). */
 final readonly class SqlScoreDistribution implements ScoreDistribution
 {
     public function __construct(private ConnectionInterface $db) {}
@@ -16,8 +17,8 @@ final readonly class SqlScoreDistribution implements ScoreDistribution
     {
         $row = $this->db->selectOne(<<<'SQL'
             SELECT COUNT(*) AS count, percentile_disc(0.99) WITHIN GROUP (ORDER BY value) AS p99
-            FROM scores
-            WHERE game_id = ? AND hidden_at IS NULL
+            FROM scores s
+            WHERE s.game_id = ? AND s.hidden_at IS NULL AND (NOT s.flagged OR s.flag_cleared_at IS NOT NULL)
             SQL, [$gameId]);
 
         return new ScoreStatistics((int) ($row->count ?? 0), isset($row->p99) ? (int) $row->p99 : null);

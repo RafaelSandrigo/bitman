@@ -210,13 +210,13 @@ it('S2: aceita o maior score exato (Number.MAX_SAFE_INTEGER)', function (): void
     sendScore($this->player, $session->id, 9_007_199_254_740_991)->assertCreated()->assertJson(['data' => ['value' => 9_007_199_254_740_991]]);
 });
 
-it('S2: score muito acima do padrão do jogo é sinalizado, mas registrado e no ranking', function (): void {
+it('S2: score muito acima do padrão do jogo é sinalizado e registrado, mas fica fora do ranking até a revisão (M20)', function (): void {
     foreach (range(1, 20) as $i) {
         Play::score(User::factory()->create(), $this->version, 100);
     }
     $session = Play::openSession($this->player, $this->version);
 
-    sendScore($this->player, $session->id, 301)->assertCreated()->assertJson(['data' => ['position' => 1]]);
+    sendScore($this->player, $session->id, 301)->assertCreated()->assertJson(['data' => ['position' => null]]);
 
     $score = Score::query()->where('user_id', $this->player->id)->sole();
     expect($score->flagged)->toBeTrue()

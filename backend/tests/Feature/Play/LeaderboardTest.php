@@ -53,15 +53,19 @@ it('empates dividem a posição; entre eles, quem chegou primeiro aparece antes'
         ->and(array_column($data, 'position'))->toBe([1, 1, 3]);
 });
 
-it('scores ocultos não entram; sinalizados entram até o admin decidir', function (): void {
+it('M20: ocultos não entram; sinalizados ficam fora até o admin mantê-los no ranking', function (): void {
     $admin = User::factory()->admin()->create();
     Play::score(User::factory()->create(['name' => 'Oculta']), $this->version, 900, ['hidden_by_id' => $admin->id, 'hidden_at' => now(), 'hide_reason' => 'Forjado.']);
     Play::score(User::factory()->create(['name' => 'Sinalizada']), $this->version, 800, ['flagged' => true, 'flag_reason' => 'Fora do padrão.']);
+    Play::score(User::factory()->create(['name' => 'Revisada']), $this->version, 700, ['flagged' => true, 'flag_reason' => 'Fora do padrão.', 'flag_cleared_by_id' => $admin->id, 'flag_cleared_at' => now()]);
+    $regular = User::factory()->create(['name' => 'Comum']);
+    Play::score($regular, $this->version, 10);
 
     $data = $this->getJson('/api/v1/games/snake/leaderboard')->json('data');
 
-    expect(array_column($data, 'player_name'))->toBe(['Sinalizada'])
-        ->and($data[0])->not->toHaveKey('flagged');
+    expect(array_column($data, 'player_name'))->toBe(['Revisada', 'Comum'])
+        ->and($data[0])->not->toHaveKey('flagged')
+        ->and(app(Leaderboard::class)->positionOf($this->game->id, $regular->id))->toBe(2);
 });
 
 it('marca a linha de quem está logado e não expõe ids nem e-mails', function (): void {

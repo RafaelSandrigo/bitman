@@ -6,6 +6,7 @@ namespace App\Modules\Play\Http\Controllers\Admin;
 
 use App\Modules\Identity\Domain\User;
 use App\Modules\Play\Application\Actions\HideScore;
+use App\Modules\Play\Application\Actions\KeepFlaggedScore;
 use App\Modules\Play\Application\Actions\ListScores;
 use App\Modules\Play\Application\Actions\RestoreScore;
 use App\Modules\Play\Domain\Score;
@@ -42,8 +43,13 @@ final class ScoreController
         return new AdminScoreResource($this->withRelations($restoreScore($actor, $score)));
     }
 
+    public function keep(string $score, #[CurrentUser] User $actor, KeepFlaggedScore $keepFlaggedScore): AdminScoreResource
+    {
+        return new AdminScoreResource($this->withRelations($keepFlaggedScore($actor, $score)));
+    }
+
     private function withRelations(Score $score): Score
     {
-        return $score->load(['game', 'version', 'player', 'session', 'hiddenBy']);
+        return $score->load(['game', 'version', 'player', 'session', 'hiddenBy', 'flagClearedBy']);
     }
 }

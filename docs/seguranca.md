@@ -84,14 +84,14 @@ como cada uma é mitigada e onde a mitigação é verificada. Uma mitigação se
 | A4 | Thumbnail maliciosa (polyglot, SVG, bomba de descompressão, metadados) | Triagem de tipo no FormRequest; depois o `ThumbnailProcessor` confere o conteúdo: só PNG/JPEG/WebP, até 2 MB, dimensões de 64 a 4096 px lidas do cabeçalho **antes** de decodificar, re-codificação em WebP (sem metadados nem conteúdo anexado) e nome aleatório. O hub serve só `/media/thumbnails/{32 hex}.webp`, com `Content-Type` fixo, `nosniff` e `CSP: default-src 'none'` | `ThumbnailProcessorTest`, `SubmitGameTest`, `tests/infra/hub-media.sh` |
 | A9 | Abuso da submissão (CPU no processamento da imagem, inundação da fila de revisão) | 10 submissões por hora por usuário; só `developer` com e-mail confirmado submete | `SubmitGameTest` |
 | S1 | Replay de score | Sessão de uso único (I10), travada (`FOR UPDATE`) na transação do envio, e `unique(game_session_id)` como última barreira. Replay responde 409 | `GameSessionTest`; `ScoreConcurrencyTest` (6 processos com conexões próprias enviando no mesmo instante → exatamente um registro) |
-| S2 | Score forjado | Limites (inteiro JSON em `0..ScoreValue::MAX`, sem truncar; string, fração e `1e3` rejeitados), duração mínima, prazo da sessão, 120 partidas/h por jogador e jogo e 20 envios/min por jogador, `flagged` acima do p99 × 3 (com 20+ scores), ocultação auditada pelo admin. A sinalização não é exposta ao jogador | `GameSessionTest`, `ScoreRulesTest`, `ScoreModerationTest` |
+| S2 | Score forjado | Limites (inteiro JSON em `0..ScoreValue::MAX`, sem truncar; string, fração e `1e3` rejeitados), duração mínima, prazo da sessão, 120 partidas/h por jogador e jogo e 20 envios/min por jogador, `flagged` acima do p99 × 3 (com 20+ scores), fora do ranking até a revisão do admin (manter ou ocultar, auditados). A sinalização não é exposta ao jogador: o score só não aparece no ranking | `GameSessionTest`, `ScoreRulesTest`, `ScoreModerationTest` |
 
 ## Limitação explícita: scores
 
 O jogo roda no navegador do jogador, então **qualquer score pode ser forjado** por
 quem modificar o JavaScript ou chamar a API diretamente. O sistema dificulta,
 limita e sinaliza fraudes, mas não as impede. Scores sinalizados continuam
-registrados e podem ser ocultados do ranking pelo admin. Validação autoritativa
+registrados e ficam fora do ranking até o admin mantê-los ou ocultá-los. Validação autoritativa
 (replay de inputs no servidor) está fora do escopo do MVP.
 
 ## Checklist de PR com impacto em segurança

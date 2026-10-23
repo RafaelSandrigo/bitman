@@ -12,7 +12,8 @@ use Illuminate\Database\ConnectionInterface;
 /**
  * Ranking direto no PostgreSQL: o melhor score visível de cada jogador (`DISTINCT ON`), com a
  * versão e a data em que foi feito; `RANK()` dá a mesma posição aos empates. Só `MAX`/ordenação,
- * nunca soma: sem risco de overflow (docs/dominio.md#score-limite-técnico).
+ * nunca soma: sem risco de overflow (docs/dominio.md#score-limite-técnico). Visível = não oculto e,
+ * se sinalizado, já mantido pelo admin (M20).
  */
 final readonly class SqlLeaderboard implements Leaderboard
 {
@@ -25,7 +26,7 @@ final readonly class SqlLeaderboard implements Leaderboard
             WITH best AS (
                 SELECT DISTINCT ON (s.user_id) s.user_id, s.value, s.created_at, s.game_version_id
                 FROM scores s
-                WHERE s.game_id = ? AND s.hidden_at IS NULL
+                WHERE s.game_id = ? AND s.hidden_at IS NULL AND (NOT s.flagged OR s.flag_cleared_at IS NOT NULL)
                 ORDER BY s.user_id, s.value DESC, s.created_at ASC
             )
             SELECT b.user_id, b.value, b.created_at, u.name, v.number,
@@ -51,9 +52,9 @@ final readonly class SqlLeaderboard implements Leaderboard
     {
         $row = $this->db->selectOne(<<<'SQL'
             WITH best AS (
-                SELECT user_id, MAX(value) AS value FROM scores
-                WHERE game_id = ? AND hidden_at IS NULL
-                GROUP BY user_id
+                SELECT s.user_id, MAX(s.value) AS value FROM scores s
+                WHERE s.game_id = ? AND s.hidden_at IS NULL AND (NOT s.flagged OR s.flag_cleared_at IS NOT NULL)
+                GROUP BY s.user_id
             ), mine AS (
                 SELECT value FROM best WHERE user_id = ?
             )

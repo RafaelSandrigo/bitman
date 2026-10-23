@@ -11,6 +11,7 @@ export const AdminScoreSchema = z.object({
   flagged: z.boolean(),
   flag_reason: z.string().nullable(),
   hidden: z.object({ by: z.string().nullable(), at: z.string().nullable(), reason: z.string().nullable() }).nullable(),
+  flag_cleared: z.object({ by: z.string().nullable(), at: z.string() }).nullable(),
   created_at: z.string(),
 })
 export type AdminScore = z.infer<typeof AdminScoreSchema>
@@ -32,6 +33,11 @@ const ScoreEnvelope = z.object({ data: AdminScoreSchema })
 /** S2: tira o score do ranking, com motivo (auditado). Ele continua registrado. */
 export function hideScore(id: string, reason: string) {
   return apiSend('POST', `/api/v1/admin/scores/${encodeURIComponent(id)}/hide`, ScoreEnvelope, { reason })
+}
+
+/** M20: o sinalizado conferido volta ao ranking (auditado). */
+export function keepScore(id: string) {
+  return apiSend('POST', `/api/v1/admin/scores/${encodeURIComponent(id)}/keep`, ScoreEnvelope)
 }
 
 export function restoreScore(id: string) {

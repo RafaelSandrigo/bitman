@@ -186,6 +186,7 @@ e URI) depois do fluxo completo.
 |---|---|---|
 | Confirmação do score | Painel do Bitman sobre o jogo com o resultado (registrado, posição, recorde, recusado). Visitante e e-mail não confirmado jogam numa partida de visitante; o painel avisa que não estão logados e oferece cadastro e login, e o score é salvo na conta depois da confirmação | [arquitetura.md](arquitetura.md#partida-de-visitante), [dominio.md](dominio.md#guestplay-play), A10 |
 | M19 | Apresentação do Bitman na home, antes da lista, com o CTA **Jogar agora** (primeiro jogo, ou a lista se não houver nenhum) | `HomePage.tsx` |
+| M20 | Score sinalizado fica fora do ranking (e do p99) até o admin decidir: **Manter no ranking** (`play.score-kept`) ou ocultar. A aba padrão da moderação passa a ser **Em revisão** | [dominio.md](dominio.md#gamesession-e-score-play), S2 |
 
 ## Checklist de lançamento
 

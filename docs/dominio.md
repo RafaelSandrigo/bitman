@@ -170,13 +170,15 @@ total e se há novas (`GET /api/v1/admin/versions/summary`).
     revelar mais nada); está `open` (`scored` → replay, 409); dentro do prazo; durou o mínimo (5 s).
 - `Score`: `gameSessionId` (único), `userId`, `gameId`, `gameVersionId`, `value`
   (ver limite abaixo), `flagged` + `flagReason`, ocultação (`hiddenById`, `hiddenAt`, `hideReason`) e `createdAt`.
-  - Sinalizado (S2) quando o jogo já tem 20+ scores visíveis e o valor passa de p99 × 3 (`AnomalyPolicy`). Continua
-    no ranking até um admin decidir.
+  - Sinalizado (S2) quando o jogo já tem 20+ scores no ranking e o valor passa de p99 × 3 (`AnomalyPolicy`). Fica
+    **em revisão**, fora do ranking e fora do cálculo do p99, até um admin decidir (M20).
+  - `keep()` mantém no ranking um sinalizado em revisão (`flag_cleared_by_id`, `flag_cleared_at`, `play.score-kept`).
   - `hide()` (motivo obrigatório, `play.score-hidden`) e `restore()` (`play.score-restored`), com `scores.moderate`.
+    Devolver ao ranking um sinalizado oculto também encerra a revisão.
     O valor nunca muda.
   - Jogo bloqueado ou versão retirada durante a partida: o score não entra. Versão substituída durante a partida:
     vale, com a versão em que foi jogado.
-- O ranking por jogo é o melhor `value` visível (não oculto) por usuário, considerando todas as versões do
+- O ranking por jogo é o melhor `value` visível (não oculto e, se sinalizado, mantido) por usuário, considerando todas as versões do
   jogo, com a versão exibida ao lado. Empates ficam na mesma posição (1, 1, 3); entre eles, quem chegou primeiro
   aparece antes. Mostra as 100 primeiras posições.
 

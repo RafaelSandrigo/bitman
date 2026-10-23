@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Modules\Audit\Domain\AuditEntry;
 use App\Modules\Identity\Domain\User;
 use App\Modules\Play\Application\Actions\HideScore;
+use App\Modules\Play\Application\Actions\KeepFlaggedScore;
 use App\Modules\Play\Domain\Score;
 use App\Modules\Versioning\Domain\DecisionReason;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -20,10 +21,11 @@ beforeEach(function (): void {
     $this->player = User::factory()->create(['name' => 'Ana']);
 });
 
-it('lista os sinalizados ainda no ranking, por padrão', function (): void {
+it('M20: lista por padrão os sinalizados em revisão (nem ocultos, nem mantidos)', function (): void {
     $flagged = Play::score($this->player, $this->version, 900, ['flagged' => true, 'flag_reason' => 'Fora do padrão.']);
     Play::score($this->player, $this->version, 10);
     Play::score($this->player, $this->version, 800, ['flagged' => true, 'flag_reason' => 'x', 'hidden_by_id' => $this->admin->id, 'hidden_at' => now(), 'hide_reason' => 'Forjado.']);
+    Play::score($this->player, $this->version, 700, ['flagged' => true, 'flag_reason' => 'x', 'flag_cleared_by_id' => $this->admin->id, 'flag_cleared_at' => now()]);
 
     $this->actingAs($this->admin)->getJson('/api/v1/admin/scores')
         ->assertOk()
@@ -33,7 +35,51 @@ it('lista os sinalizados ainda no ranking, por padrão', function (): void {
         ->assertJsonPath('data.0.game.slug', $this->game->slug)
         ->assertJsonPath('data.0.flag_reason', 'Fora do padrão.')
         ->assertJsonPath('data.0.hidden', null)
+        ->assertJsonPath('data.0.flag_cleared', null)
         ->assertJsonPath('data.0.session_seconds', 600);
+});
+
+it('M20: manter no ranking um sinalizado, auditado; ele volta ao ranking', function (): void {
+    $score = Play::score($this->player, $this->version, 900, ['flagged' => true, 'flag_reason' => 'Fora do padrão.']);
+    expect($this->getJson("/api/v1/games/{$this->game->slug}/leaderboard")->json('data'))->toBe([]);
+
+    $this->actingAs($this->admin)->postJson("/api/v1/admin/scores/{$score->id}/keep")
+        ->assertOk()
+        ->assertJsonPath('data.flag_cleared.by', 'Rafael');
+
+    expect(array_column($this->getJson("/api/v1/games/{$this->game->slug}/leaderboard")->json('data'), 'value'))->toBe([900]);
+    $entry = AuditEntry::sole();
+    expect($entry->action)->toBe('play.score-kept')
+        ->and($entry->subject_id)->toBe($score->id)
+        ->and($entry->actor_id)->toBe($this->admin->id)
+        ->and($entry->context)->toMatchArray(['game_id' => $this->game->id, 'player_id' => $this->player->id, 'value' => 900]);
+});
+
+it('M20: só se mantém um sinalizado em revisão, uma vez', function (): void {
+    $regular = Play::score($this->player, $this->version, 10);
+    $flagged = Play::score($this->player, $this->version, 900, ['flagged' => true, 'flag_reason' => 'x']);
+
+    $this->actingAs($this->admin)->postJson("/api/v1/admin/scores/{$regular->id}/keep")
+        ->assertUnprocessable()
+        ->assertJson(['message' => 'Este score não está em revisão.']);
+    $this->postJson("/api/v1/admin/scores/{$flagged->id}/keep")->assertOk();
+    $this->postJson("/api/v1/admin/scores/{$flagged->id}/keep")->assertUnprocessable();
+});
+
+it('M20: devolver ao ranking um sinalizado oculto também encerra a revisão', function (): void {
+    $score = Play::score($this->player, $this->version, 900, ['flagged' => true, 'flag_reason' => 'x']);
+    $this->actingAs($this->admin)->postJson("/api/v1/admin/scores/{$score->id}/hide", ['reason' => 'Suspeito.'])->assertOk();
+
+    $this->postJson("/api/v1/admin/scores/{$score->id}/restore")->assertOk();
+
+    expect(array_column($this->getJson("/api/v1/games/{$this->game->slug}/leaderboard")->json('data'), 'value'))->toBe([900])
+        ->and($score->fresh()?->flag_cleared_by_id)->toBe($this->admin->id);
+});
+
+it('M20: manter exige a permissão scores.moderate na Action', function (): void {
+    $score = Play::score($this->player, $this->version, 900, ['flagged' => true, 'flag_reason' => 'x']);
+
+    expect(fn () => app(KeepFlaggedScore::class)($this->player, $score->id))->toThrow(AuthorizationException::class);
 });
 
 it('filtra os ocultos, todos e por jogo', function (): void {

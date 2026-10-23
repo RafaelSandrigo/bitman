@@ -6,9 +6,32 @@ import { Alert } from '../../../shared/ui/Alert'
 import { Button } from '../../../shared/ui/Button'
 import { formatDateTime, formatScore } from '../../play/format'
 import { RejectWithReason } from '../RejectWithReason'
-import { hideScore, listScores, restoreScore, scoreFilters, type AdminScore, type ScoreFilter } from '../scores'
+import { hideScore, keepScore, listScores, restoreScore, scoreFilters, type AdminScore, type ScoreFilter } from '../scores'
 
-const filterLabels: Record<ScoreFilter, string> = { flagged: 'Sinalizados', hidden: 'Ocultos', all: 'Todos' }
+const filterLabels: Record<ScoreFilter, string> = { flagged: 'Em revisão', hidden: 'Ocultos', all: 'Todos' }
+
+/** M20: o sinalizado fica fora do ranking até o admin mantê-lo ou ocultá-lo. */
+function FlagReview({ score, onChanged }: { score: AdminScore; onChanged: () => unknown }) {
+  const keep = useMutation({ mutationFn: () => keepScore(score.id), onSuccess: onChanged })
+
+  if (score.flag_cleared) {
+    return (
+      <p className="text-slate-400">
+        Mantido no ranking por {score.flag_cleared.by ?? '—'} em {formatDateTime(score.flag_cleared.at)}.
+      </p>
+    )
+  }
+  if (score.hidden) return null
+  return (
+    <div className="space-y-2">
+      <p className="text-amber-200">Em revisão: fora do ranking até você decidir.</p>
+      <Button onClick={() => keep.mutate()} disabled={keep.isPending}>
+        Manter no ranking
+      </Button>
+      {keep.isError && <Alert tone="error">{errorMessage(keep.error)}</Alert>}
+    </div>
+  )
+}
 
 function ScoreRow({ score, onChanged }: { score: AdminScore; onChanged: () => unknown }) {
   const restore = useMutation({ mutationFn: () => restoreScore(score.id), onSuccess: onChanged })
@@ -26,6 +49,7 @@ function ScoreRow({ score, onChanged }: { score: AdminScore; onChanged: () => un
         {score.session_seconds !== null && <span className="text-slate-400">partida de {score.session_seconds}s</span>}
       </div>
       {score.flagged && <p className="text-amber-300">Sinalizado: {score.flag_reason}</p>}
+      {score.flagged && <FlagReview score={score} onChanged={onChanged} />}
       {score.hidden ? (
         <div className="space-y-2">
           <p className="text-slate-300">
@@ -73,8 +97,8 @@ export function ScoresPage() {
     <section className="space-y-4">
       <h1 className="text-2xl font-bold">Scores</h1>
       <p className="text-sm text-slate-400">
-        Scores muito acima do padrão do jogo são sinalizados automaticamente e continuam no ranking até alguém decidir. Ocultar tira o
-        score do ranking sem apagá-lo.
+        Scores muito acima do padrão do jogo são sinalizados automaticamente e ficam fora do ranking até você decidir: manter no
+        ranking ou ocultar. Ocultar não apaga o score.
       </p>
       <div role="tablist" aria-label="Filtro" className="flex gap-2">
         {scoreFilters.map((value) => (
