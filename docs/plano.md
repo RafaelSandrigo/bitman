@@ -178,7 +178,7 @@ e URI) depois do fluxo completo.
 - `docs/implantacao.md`: labels do Traefik para `bitman` e `bitman-games`, segredos no `.env` da raiz (fora do git), ativação do hook do deploy-hub, backups dos volumes
   (PostgreSQL e artefatos) e rotação de logs.
 - Teste de fumaça pós-deploy: headers de segurança e hash dos arquivos servidos (C1, C2).
-- Observabilidade mínima: logs estruturados e alerta de `fetch_failed` (o de scores sinalizados entrou com a M21).
+- Observabilidade mínima: alerta de `fetch_failed` (os logs em JSON e o alerta de scores sinalizados já entraram).
 
 ### Melhorias entregues na Fase 8
 
@@ -189,6 +189,8 @@ e URI) depois do fluxo completo.
 | M20 | Score sinalizado fica fora do ranking (e do p99) até o admin decidir: **Manter no ranking** (`play.score-kept`) ou ocultar. A aba padrão da moderação passa a ser **Em revisão** | [dominio.md](dominio.md#gamesession-e-score-play), S2 |
 | M21 | Card **Scores em revisão** no painel (`GET /admin/scores/summary`) e e-mail a quem tem `scores.moderate` quando um score é sinalizado, no máximo um por jogo por hora. O e-mail não cita o jogador | `NotifyModeratorsOfFlaggedScore`, S2 |
 | M18 | **Seja Desenvolvedor**: no menu e na home, o usuário com e-mail confirmado pede a role `developer` com nome, perfil do GitHub e apresentação. O admin aprova ou rejeita com motivo em **Pedidos de dev**, com card no painel. Tudo auditado | [dominio.md](dominio.md#developerrequest-identity), A11 |
+| M12 | `bitman:reconcile-served`, de hora em hora: tira do ar o que está servido sem versão no ar e devolve ao ar, só a partir do archive e com os hashes conferidos, o que deveria estar servido (ou está diferente). Logs `served.*` e exit 1 em falha | [arquitetura.md](arquitetura.md#publicação), J6 |
+| Logs | Canal `stderr` em JSON estruturado por padrão (`JsonFormatter`) | [convencoes.md](convencoes.md#logs) |
 
 ## Checklist de lançamento
 

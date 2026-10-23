@@ -112,6 +112,8 @@ Tudo isso roda no CI e localmente via `make check`. **PR com CI vermelho não é
 
 - Logs de depuração e observabilidade são JSON estruturado. Texto simples só na saída de comandos
   feita para o usuário (por exemplo, `artisan`).
+- O canal `stderr` (o de produção) usa `JsonFormatter` por padrão. Mensagem curta e estável como chave do evento
+  (`served.restored`), com os dados no contexto: `$logger->warning('served.restored', ['public_id' => …])`.
 
 ## Git
 

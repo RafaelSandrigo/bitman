@@ -47,4 +47,19 @@ interface ArtifactStore
     public function unserve(string $publicId): void;
 
     public function isServed(string $publicId): bool;
+
+    /**
+     * M12: o que está em `served/{publicId}/` agora; arquivo ausente vem como `null`.
+     *
+     * @param  list<string>  $paths
+     * @return array<string, string|null>
+     */
+    public function readServed(string $publicId, array $paths): array;
+
+    /**
+     * M12: os `publicId` com diretório em `served/` (só nomes no formato UUID).
+     *
+     * @return list<string>
+     */
+    public function servedIds(): array;
 }

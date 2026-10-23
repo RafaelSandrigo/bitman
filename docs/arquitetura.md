@@ -255,6 +255,17 @@ fica fora do ar, nunca "retirado no banco, mas servido" (J6). Voltar ao ar (desb
 do commit, a partir do archive e conferindo os hashes de novo; uma falha aí deixa o jogo fora do ar e é
 reportada (o detalhe do jogo no admin mostra se a versão está sendo servida). O `archive` é permanente.
 
+**Reconciliação (M12).** `bitman:reconcile-served` roda de hora em hora no `scheduler`. Ele confere o `served/`
+contra as versões no ar (jogo `published` e versão `published`):
+
+- um diretório servido sem versão no ar sai do ar (J6);
+- uma versão no ar sem diretório, ou com conteúdo diferente do aprovado, volta a ser servida a partir do archive,
+  com os hashes conferidos de novo (`ServeArchivedVersion`, I6);
+- se o archive não confere ou falta, a versão continua fora do ar.
+
+Cada correção gera um log `served.removed`, `served.restored` ou `served.replaced` (warning). Uma falha gera
+`served.restore_failed` (error), e o comando sai com código 1.
+
 ### Partida e score
 
 ```mermaid

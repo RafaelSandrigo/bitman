@@ -114,6 +114,31 @@ final readonly class FilesystemArtifactStore implements ArtifactStore
         return is_dir($this->servedDir($publicId));
     }
 
+    public function readServed(string $publicId, array $paths): array
+    {
+        $dir = $this->servedDir($publicId);
+        $files = [];
+        foreach ($paths as $path) {
+            $contents = @file_get_contents($dir.'/'.$this->allowed($path));
+            $files[$path] = $contents === false ? null : $contents;
+        }
+
+        return $files;
+    }
+
+    public function servedIds(): array
+    {
+        $ids = [];
+        foreach (glob($this->root.'/served/*', GLOB_ONLYDIR) ?: [] as $dir) {
+            $name = basename($dir);
+            if (preg_match(self::UUID, $name) === 1) {
+                $ids[] = $name;
+            }
+        }
+
+        return $ids;
+    }
+
     private function archiveDir(string $gameId, int $number): string
     {
         if (preg_match(self::ULID, $gameId) !== 1 || $number < 1) {

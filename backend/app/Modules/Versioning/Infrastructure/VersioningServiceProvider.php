@@ -10,6 +10,7 @@ use App\Modules\Catalog\Domain\Events\GameUnblocked;
 use App\Modules\Versioning\Domain\ArtifactStore;
 use App\Modules\Versioning\Domain\Events\ImportAuthorized;
 use App\Modules\Versioning\Domain\QuarantineStore;
+use App\Modules\Versioning\Infrastructure\Console\ReconcileServedCommand;
 use App\Modules\Versioning\Infrastructure\Listeners\PutUnblockedGameBackOnline;
 use App\Modules\Versioning\Infrastructure\Listeners\QueueRepositoryFetch;
 use App\Modules\Versioning\Infrastructure\Listeners\RequestFirstImport;
@@ -37,6 +38,9 @@ final class VersioningServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        if ($this->app->runningInConsole()) {
+            $this->commands([ReconcileServedCommand::class]);
+        }
         Event::listen(GameSubmitted::class, RequestFirstImport::class);
         Event::listen(ImportAuthorized::class, QueueRepositoryFetch::class);
         Event::listen(GameBlocked::class, TakeBlockedGameOffline::class);
