@@ -26,7 +26,7 @@ release: ## Deploy: imagens do commit REF (padrão HEAD), migrations e troca dos
 	@# A orquestração (este Makefile e o compose) vem da árvore de trabalho: precisa ser a do commit.
 	@git diff --quiet "$(REF)" -- docker-compose.yml Makefile || { echo "release: docker-compose.yml ou Makefile diferem de $(REF); faça commit ou atualize o diretório"; exit 1; }
 	rm -rf .release && mkdir .release && git archive "$(REF)" | tar -x -C .release
-	$(COMPOSE) build app bitman-web bitman-games git-sandbox egress-proxy
+	BITMAN_BUILD=$$(git rev-parse --short "$(REF)") $(COMPOSE) build app bitman-web bitman-games git-sandbox egress-proxy
 	@# Migrations com a imagem nova antes da troca: se falharem, a versão atual continua no ar.
 	$(COMPOSE) run --rm -T app php artisan migrate --force
 	$(COMPOSE) run --rm -T app php artisan db:seed --class=RolesAndPermissionsSeeder --force

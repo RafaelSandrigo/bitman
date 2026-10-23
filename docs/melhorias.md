@@ -20,7 +20,6 @@ anotado no commit.
 | M7 | Diff textual no Portão 2 | Para arquivo `modified`, o admin vê só que mudou, não o quê | Diff linha a linha contra o arquivo da versão publicada (lido do `archive`, Fase 5) | Fase 4 |
 | M8 | Status `rejected` do jogo | `dominio.md` prevê o jogo `rejected` quando a primeira versão é rejeitada, mas o jogo fica `submitted`; o dono vê o estado pela versão | Decidir se o status do jogo é necessário (talvez removê-lo) ou implementar a transição, com volta ao reenviar | Fase 4 |
 | M9 | Aprovar todos os arquivos de uma vez | Cada arquivo exige abrir e aprovar separadamente (ADR 0006) | Manter a abertura obrigatória, mas permitir aprovar os já abertos num só passo | Fase 4 |
-| M10 | Avisar que o hub foi atualizado | Uma aba aberta antes do deploy continua com o JavaScript antigo até ser recarregada: telas e status novos não aparecem (ex.: "Enviar novamente" e a aba Versões) | Publicar um `version.json` no build e, ao focar a aba ou a cada poucos minutos, mostrar "Nova versão disponível — recarregar" | Teste manual da Fase 4 (2026-10-12) |
 | M11 | E2E num navegador de verdade | O aceite da Fase 5 é coberto pela API (`EndToEndPublicationTest`) e por testes de componente do iframe; nenhum teste abre o jogo num navegador real | Playwright num container descartável, contra uma stack de teste, conferindo iframe, CSP e headers | Fase 5 |
 | M13 | Endpoint de jogos do admin | A aba Jogos usa `GET /admin/submissions?status=…`, nome herdado da fila de submissões | Renomear para `GET /admin/games` mantendo o filtro | Fase 5 |
 

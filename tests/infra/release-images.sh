@@ -3,7 +3,8 @@
 # Constrói as imagens com os mesmos Dockerfiles do "make release" e confere:
 #   - PHP: sem dependências de dev, sem composer, sem .env nem testes, opcache sem revalidar
 #     timestamps, código de dono root (o php-fpm e a fila, como www-data, não o alteram).
-#   - bitman-web: SPA compilada, sem source maps, com a configuração do nginx embutida.
+#   - bitman-web: SPA compilada, sem source maps, com a configuração do nginx embutida e o
+#     version.json do commit (M10).
 #   - bitman-games: configuração do nginx (CSP sandbox, J1–J3) embutida, sem bind mount.
 #
 #   sh tests/infra/release-images.sh          # árvore de trabalho (arquivos versionados e novos não ignorados)
@@ -23,7 +24,7 @@ fi
 
 docker build -q --target prod --build-arg CONFIG_DIR=docker/php \
     -f "$SRC/docker/php/Dockerfile" -t "bitman-php:$TAG" "$SRC" >/dev/null
-docker build -q --build-arg VITE_GAMES_ORIGIN=https://games.test \
+docker build -q --build-arg VITE_GAMES_ORIGIN=https://games.test --build-arg VITE_BITMAN_BUILD=abc1234 \
     -f "$SRC/docker/web/Dockerfile" -t "bitman-web:$TAG" "$SRC" >/dev/null
 docker build -q -f "$SRC/docker/games/Dockerfile" -t "bitman-games:$TAG" "$SRC" >/dev/null
 
@@ -48,6 +49,7 @@ check "bitman-web:$TAG" 'test -f /srv/spa/index.html' "SPA compilada em /srv/spa
 check "bitman-web:$TAG" 'test -z "$(find /srv/spa -name "*.map")"' "sem source maps"
 check "bitman-web:$TAG" 'grep -q "https://games.test" /srv/spa/assets/*.js' "origem de jogos embutida no build"
 check "bitman-web:$TAG" 'test -f /etc/nginx/templates/default.conf.template' "configuração do nginx embutida"
+check "bitman-web:$TAG" 'grep -q "\"build\":\"abc1234\"" /srv/spa/version.json && grep -q abc1234 /srv/spa/assets/*.js' "version.json e bundle com o commit do build (M10)"
 
 echo "bitman-games"
 check "bitman-games:$TAG" 'test -f /etc/nginx/templates/default.conf.template && grep -q "sandbox allow-scripts" /etc/nginx/templates/game-headers.inc.template' "configuração com CSP sandbox embutida"

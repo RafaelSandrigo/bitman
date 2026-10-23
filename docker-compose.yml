@@ -41,6 +41,8 @@ services:
       dockerfile: docker/web/Dockerfile
       args:
         VITE_GAMES_ORIGIN: ${GAMES_ORIGIN}
+        # M10: o commit do release (make release), para o aviso de nova versão do hub.
+        VITE_BITMAN_BUILD: ${BITMAN_BUILD:-}
     restart: unless-stopped
     environment:
       GAMES_ORIGIN: ${GAMES_ORIGIN}

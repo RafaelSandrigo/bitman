@@ -34,6 +34,10 @@ make release REF=origin/main
    continuam no ar.
 5. `docker compose up -d --wait --remove-orphans`: troca os containers e espera os healthchecks.
 
+O commit do release (`BITMAN_BUILD`) entra no bundle e no `/version.json` da SPA. Uma aba aberta antes do
+deploy compara os dois ao ganhar foco e a cada 5 minutos, e mostra **Há uma nova versão do Bitman — Recarregar**
+(M10). Ela nunca recarrega sozinha.
+
 Os caches do Laravel (`config`, `route` e `event`) são gerados ao subir cada container
 (`docker/php/entrypoint.prod.sh`), porque dependem do `.env`, que só existe em tempo de execução.
 

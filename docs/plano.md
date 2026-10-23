@@ -191,6 +191,7 @@ e URI) depois do fluxo completo.
 | M18 | **Seja Desenvolvedor**: no menu e na home, o usuário com e-mail confirmado pede a role `developer` com nome, perfil do GitHub e apresentação. O admin aprova ou rejeita com motivo em **Pedidos de dev**, com card no painel. Tudo auditado | [dominio.md](dominio.md#developerrequest-identity), A11 |
 | M12 | `bitman:reconcile-served`, de hora em hora: tira do ar o que está servido sem versão no ar e devolve ao ar, só a partir do archive e com os hashes conferidos, o que deveria estar servido (ou está diferente). Logs `served.*` e exit 1 em falha | [arquitetura.md](arquitetura.md#publicação), J6 |
 | Logs | Canal `stderr` em JSON estruturado por padrão (`JsonFormatter`) | [convencoes.md](convencoes.md#logs) |
+| M10 | Aviso **Há uma nova versão do Bitman — Recarregar**: `version.json` com o commit do release, comparado com o do bundle ao focar a aba e a cada 5 minutos | [implantacao.md](implantacao.md#make-release) |
 
 ## Checklist de lançamento
 

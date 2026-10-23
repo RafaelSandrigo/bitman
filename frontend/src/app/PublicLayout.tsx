@@ -4,6 +4,7 @@ import { hasPermission, useCurrentUser, useLogout } from '../features/auth/sessi
 import { formatScore } from '../features/play/format'
 import { usePendingScore } from '../features/play/pendingScore'
 import { PendingScoreSaver } from '../features/play/PendingScoreSaver'
+import { HubUpdateBanner } from '../shared/update/HubUpdateBanner'
 
 function UserMenu() {
   const { data: user } = useCurrentUser()
@@ -86,6 +87,7 @@ export function PublicLayout() {
           <UserMenu />
         </nav>
       </header>
+      <HubUpdateBanner />
       <UnverifiedBanner />
       <main className="mx-auto max-w-6xl px-4 py-8">
         <Outlet />
