@@ -11,7 +11,7 @@ REF     ?= HEAD
 
 .DEFAULT_GOAL := help
 .PHONY: help init release up down restart ps logs build sh migrate artisan composer npm \
-        test test-back test-front test-infra lint stan check
+        test test-back test-front test-infra test-e2e lint stan check
 
 help: ## Lista os comandos
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-12s %s\n", $$1, $$2}'
@@ -67,13 +67,16 @@ composer: ## composer (ex.: make composer c="require pacote")
 npm: ## npm no frontend (ex.: make npm c="install pacote")
 	$(NODE) npm $(c)
 
-test: test-back test-front test-infra ## Todos os testes
+test: test-back test-front test-infra test-e2e ## Todos os testes
 
 test-back: ## Testes do backend (banco bitman_test)
 	$(PHP) ./vendor/bin/pest --colors=always
 
 test-front: ## Testes do frontend
 	$(NODE) npm test
+
+test-e2e: ## E2E no Chromium (Playwright) contra uma stack descartável "bitman-e2e" (docs/convencoes.md#testes)
+	sh tests/e2e/run.sh
 
 test-infra: ## Testes de infraestrutura (imagens de produção, origem de jogos, thumbnails, jogo de exemplo, fixtures e egress da sandbox)
 	sh tests/infra/release-images.sh

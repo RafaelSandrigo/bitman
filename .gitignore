@@ -16,3 +16,8 @@ frontend/dist/
 # Contexto das imagens de produção: git archive do commit (make release)
 .release/
 .muxel/
+
+# E2E (M11): artefatos do Playwright.
+tests/e2e/node_modules/
+tests/e2e/test-results/
+tests/e2e/playwright-report/

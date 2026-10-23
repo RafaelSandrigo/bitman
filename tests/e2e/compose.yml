@@ -1,0 +1,119 @@
+# Stack E2E descartável (M11, docs/convencoes.md#testes). Projeto Compose próprio ("bitman-e2e"):
+# volumes, rede e containers separados dos de produção. A rede "e2e" é interna (sem internet);
+# só o runner sai para baixar o @playwright/test. Uso: make test-e2e.
+name: bitman-e2e
+
+x-php: &php
+  image: bitman-php:e2e
+  pull_policy: never
+  env_file: [e2e.env]
+  volumes:
+    - quarantine:/var/bitman/quarantine
+    - artifacts:/var/bitman/artifacts
+    - media:/var/bitman/media
+  networks: [e2e]
+  depends_on:
+    postgres: { condition: service_healthy }
+    redis: { condition: service_healthy }
+
+services:
+  app:
+    <<: *php
+    build:
+      context: ../..
+      dockerfile: docker/php/Dockerfile
+      target: prod
+      args:
+        CONFIG_DIR: docker/php
+
+  bitman-web:
+    image: bitman-web:e2e
+    build:
+      context: ../..
+      dockerfile: docker/web/Dockerfile
+      args:
+        VITE_GAMES_ORIGIN: http://games.e2e
+        VITE_BITMAN_BUILD: e2e
+    environment:
+      GAMES_ORIGIN: http://games.e2e
+    volumes:
+      - media:/srv/media:ro
+    depends_on: [app]
+    networks:
+      e2e:
+        aliases: [hub.e2e]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/health"]
+      interval: 2s
+      retries: 30
+
+  bitman-games:
+    image: bitman-games:e2e
+    build:
+      context: ../..
+      dockerfile: docker/games/Dockerfile
+    environment:
+      GAMES_ORIGIN: http://games.e2e
+      HUB_ORIGIN: http://hub.e2e
+    volumes:
+      - type: volume
+        source: artifacts
+        target: /srv/games
+        read_only: true
+        volume:
+          subpath: served
+    networks:
+      e2e:
+        aliases: [games.e2e]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/health"]
+      interval: 2s
+      retries: 30
+
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: bitman
+      POSTGRES_USER: bitman
+      POSTGRES_PASSWORD: e2e
+    tmpfs: [/var/lib/postgresql/data]
+    networks: [e2e]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bitman -d bitman"]
+      interval: 2s
+      retries: 30
+
+  redis:
+    image: redis:8.2-alpine
+    command: ["redis-server", "--requirepass", "e2e"]
+    networks: [e2e]
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a e2e --no-auth-warning ping | grep -q PONG"]
+      interval: 2s
+      retries: 30
+
+  runner:
+    image: mcr.microsoft.com/playwright:v1.49.1-noble
+    profiles: [runner]
+    working_dir: /e2e
+    environment:
+      HUB_URL: http://hub.e2e
+      GAMES_URL: http://games.e2e
+      E2E_PASSWORD: senha-e2e-123
+      CI: "1"
+    volumes:
+      - ./:/e2e
+      - runner_node_modules:/e2e/node_modules
+    networks: [e2e, egress]
+    command: ["sh", "-c", "npm ci --no-audit --no-fund && npx playwright test"]
+
+volumes:
+  quarantine:
+  artifacts:
+  media:
+  runner_node_modules:
+
+networks:
+  e2e:
+    internal: true
+  egress: {}

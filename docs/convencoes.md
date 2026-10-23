@@ -49,7 +49,7 @@ Qualquer comando roda em produção. Regras, para pessoas e agentes de IA:
 | Arquitetura | Pest `arch()` | Regras de dependência entre camadas e módulos, sem `dd`/`dump`, `strict_types` |
 | Integração | Pest + container | git-sandbox contra repositórios-fixture; headers do nginx `games` |
 | Frontend | Vitest + Testing Library + MSW | Componentes, hooks, schemas Zod e bridge `postMessage` |
-| E2E | Playwright | Poucos fluxos críticos: submeter → aprovar → publicar → jogar → score no ranking |
+| E2E | Playwright (Chromium) | Poucos fluxos críticos num navegador real, contra uma stack descartável (`make test-e2e`) |
 
 - Cada invariante (`I1`…`I13`) e cada mitigação de [seguranca.md](seguranca.md) tem
   um teste que cita o ID no nome ou na descrição.
@@ -61,6 +61,17 @@ Qualquer comando roda em produção. Regras, para pessoas e agentes de IA:
 - Todo código novo (função, Action, componente) nasce com teste. Os testes seguem o **F.I.R.S.T.**:
   rápidos, independentes, repetíveis, autovalidáveis e escritos no momento certo (junto do código).
   Rodam com um único comando: `make test`.
+- **E2E (M11).** `tests/e2e/run.sh` sobe o projeto Compose `bitman-e2e`, que fica separado de produção: volumes
+  próprios, PostgreSQL em `tmpfs` e a rede `e2e` interna, sem internet. Os hosts são `hub.e2e` e `games.e2e`, duas
+  origens, como em produção. O `E2eSeeder` só roda com `APP_ENV=e2e` e publica um jogo-fixture pelas Actions reais.
+  O runner do Playwright confere:
+  - a CSP do hub;
+  - o iframe sandbox, com o jogo sem acesso ao hub, a cookies e a storage;
+  - os headers do arquivo do jogo;
+  - o painel do Bitman no `game-over`;
+  - o score de visitante salvo depois do login.
+
+  Tudo é removido no fim (`down -v`).
 - Não há meta de cobertura global. `Domain` e `Application` devem ficar perto de 100%,
   e o teste de mutação (`pest --mutate`) roda nos módulos `Versioning` e `Ingestion`.
 
