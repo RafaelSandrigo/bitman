@@ -183,8 +183,10 @@ total e se há novas (`GET /api/v1/admin/versions/summary`).
     revelar mais nada); está `open` (`scored` → replay, 409); dentro do prazo; durou o mínimo (5 s).
 - `Score`: `gameSessionId` (único), `userId`, `gameId`, `gameVersionId`, `value`
   (ver limite abaixo), `flagged` + `flagReason`, ocultação (`hiddenById`, `hiddenAt`, `hideReason`) e `createdAt`.
-  - Sinalizado (S2) quando o jogo já tem 20+ scores no ranking e o valor passa de p99 × 3 (`AnomalyPolicy`). Fica
-    **em revisão**, fora do ranking e fora do cálculo do p99, até um admin decidir (M20).
+  - Sinalizado (S2) pela `AnomalyPolicy`, nesta ordem: acima do teto do jogo, se o admin definiu um (`games.score_cap`,
+    M15, vale desde o primeiro score); com 20+ scores no ranking, acima de p99 × 3 do valor ou de p99 × 3 dos pontos
+    por segundo de partida (M15). Fica **em revisão**, fora do ranking e do cálculo dos p99, até um admin decidir (M20).
+  - O teto é mudado por `ChangeScoreCap` (`scores.moderate`, `catalog.score-cap-changed`).
   - `keep()` mantém no ranking um sinalizado em revisão (`flag_cleared_by_id`, `flag_cleared_at`, `play.score-kept`).
   - `hide()` (motivo obrigatório, `play.score-hidden`) e `restore()` (`play.score-restored`), com `scores.moderate`.
     Devolver ao ranking um sinalizado oculto também encerra a revisão.

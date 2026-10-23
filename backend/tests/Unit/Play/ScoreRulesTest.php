@@ -55,3 +55,25 @@ it('o token tem 256 bits aleatórios e só o SHA-256 dele é guardado', function
         ->and($a->hash)->not->toBe($a->plain)
         ->and($a->plain)->not->toBe($b->plain);
 });
+
+it('M15: teto do jogo sinaliza sempre, mesmo sem amostra', function (): void {
+    $policy = new AnomalyPolicy(factor: 3.0, minSample: 20);
+
+    expect($policy->flagReason(ScoreValue::fromInt(500), new ScoreStatistics(0, null), seconds: 60, cap: 500))->toBeNull()
+        ->and($policy->flagReason(ScoreValue::fromInt(501), new ScoreStatistics(0, null), seconds: 60, cap: 500))->toBe('Acima do teto do jogo (500).');
+});
+
+it('M15: sinaliza pontos por segundo acima do p99 × fator do jogo', function (): void {
+    $policy = new AnomalyPolicy(factor: 3.0, minSample: 20);
+    // p99 de 10 pontos por segundo: 3 × 10 = 30/s é o limite.
+    $statistics = new ScoreStatistics(50, 100_000, 10.0);
+
+    expect($policy->flagReason(ScoreValue::fromInt(300), $statistics, seconds: 10))->toBeNull()
+        ->and($policy->flagReason(ScoreValue::fromInt(310), $statistics, seconds: 10))->toBe('Acima de 3 × o p99 de pontos por segundo do jogo (10/s, com 50 scores): 31/s.');
+});
+
+it('M15: pontos por segundo também esperam a amostra mínima', function (): void {
+    $policy = new AnomalyPolicy(factor: 3.0, minSample: 20);
+
+    expect($policy->flagReason(ScoreValue::fromInt(1000), new ScoreStatistics(19, 100_000, 1.0), seconds: 5))->toBeNull();
+});

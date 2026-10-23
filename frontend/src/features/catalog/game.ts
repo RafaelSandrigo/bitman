@@ -29,6 +29,8 @@ export const GameSchema = z.object({
   first_published_at: z.string().nullable(),
   /** Visível para o dono e o admin. */
   block_reason: z.string().nullable(),
+  // M15: teto de score definido pelo admin (só nas visões do admin e do dono).
+  score_cap: z.number().int().positive().nullable().default(null),
   created_at: z.string(),
 })
 export type Game = z.infer<typeof GameSchema>

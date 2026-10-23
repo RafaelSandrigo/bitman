@@ -32,6 +32,7 @@ class GameResource extends JsonResource
             'first_published_at' => $this->first_published_at?->toIso8601String(),
             // O dono também vê o motivo do bloqueio (nunca quem bloqueou).
             'block_reason' => $this->block_reason,
+            'score_cap' => $this->score_cap,
             'created_at' => $this->created_at->toIso8601String(),
             'owner' => $this->whenLoaded('owner', fn (): array => [
                 'id' => $this->owner->id,

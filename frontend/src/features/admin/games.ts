@@ -20,6 +20,11 @@ export function blockGame(id: string, reason: string) {
   return apiSend('POST', `/api/v1/admin/games/${encodeURIComponent(id)}/block`, GameEnvelope, { reason })
 }
 
+/** M15: teto de score do jogo (`null` remove); acima dele, o score é sinalizado. */
+export function changeScoreCap(id: string, scoreCap: number | null) {
+  return apiSend('PATCH', `/api/v1/admin/games/${encodeURIComponent(id)}/score-cap`, GameEnvelope, { score_cap: scoreCap })
+}
+
 export function unblockGame(id: string) {
   return apiSend('POST', `/api/v1/admin/games/${encodeURIComponent(id)}/unblock`, GameEnvelope)
 }

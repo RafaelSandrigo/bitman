@@ -8,6 +8,7 @@ use App\Modules\Catalog\Domain\Events\GameBlocked;
 use App\Modules\Catalog\Domain\Events\GameSlugChanged;
 use App\Modules\Catalog\Domain\Events\GameSubmitted;
 use App\Modules\Catalog\Domain\Events\GameUnblocked;
+use App\Modules\Catalog\Domain\Events\ScoreCapChanged;
 use App\Modules\Catalog\Domain\Exceptions\InvalidGameTransition;
 use App\Modules\Catalog\Domain\Exceptions\SlugIsImmutable;
 use App\Modules\Identity\Domain\User;
@@ -43,6 +44,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string|null $blocked_by_id
  * @property CarbonImmutable|null $blocked_at
  * @property string|null $block_reason
+ * @property int|null $score_cap teto de score (M15); acima dele, o score é sinalizado
  * @property CarbonImmutable $created_at
  * @property CarbonImmutable $updated_at
  * @property-read User $owner
@@ -83,6 +85,20 @@ final class Game extends Model implements EmitsDomainEvents
     }
 
     /** O admin ajusta o slug até a primeira publicação; depois ele é imutável. */
+    /** M15: `null` remove o teto. Sem mudança, nada é registrado. */
+    public function changeScoreCap(?int $cap, User $actor): void
+    {
+        $from = $this->score_cap;
+        if ($from === $cap) {
+            return;
+        }
+
+        $this->score_cap = $cap;
+        $this->save();
+
+        $this->recordEvent(new ScoreCapChanged($this->id, $from, $cap, $actor->id));
+    }
+
     public function changeSlug(Slug $slug, User $actor): void
     {
         if ($this->status->wasPublished()) {
@@ -173,6 +189,7 @@ final class Game extends Model implements EmitsDomainEvents
         return [
             'status' => GameStatus::class,
             'first_published_at' => 'immutable_datetime',
+            'score_cap' => 'integer',
             'blocked_at' => 'immutable_datetime',
             'created_at' => 'immutable_datetime',
             'updated_at' => 'immutable_datetime',

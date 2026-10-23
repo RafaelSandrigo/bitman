@@ -16,6 +16,7 @@ export function makeGame(overrides: Partial<Game> = {}): Game {
     published_version_id: null,
     first_published_at: null,
     block_reason: null,
+    score_cap: null,
     created_at: '2026-10-11T12:00:00+00:00',
     ...overrides,
   }

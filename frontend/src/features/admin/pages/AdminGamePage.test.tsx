@@ -83,4 +83,36 @@ describe('AdminGamePage', () => {
 
     await waitFor(() => expect(unblocked).toBe(true))
   })
+
+  it('M15: define o teto de score do jogo', async () => {
+    const game = makeGame({ status: 'published', published_version_id: 'v1' })
+    const bodies: unknown[] = []
+    serveGame(game, true)
+    server.use(
+      http.patch(`/api/v1/admin/games/${game.id}/score-cap`, async ({ request }) => {
+        bodies.push(await request.json())
+        return HttpResponse.json({ data: { ...game, score_cap: 5000 } })
+      }),
+    )
+    const { user } = renderAt(`/admin/jogos/${game.id}`)
+
+    const section = await screen.findByRole('region', { name: 'Teto de score' })
+    expect(within(section).getByText('Sem teto: só o padrão do jogo sinaliza scores.')).toBeInTheDocument()
+    await user.type(within(section).getByLabelText('Teto (vazio para remover)'), '5000')
+    await user.click(within(section).getByRole('button', { name: 'Salvar teto' }))
+
+    await waitFor(() => expect(bodies).toEqual([{ score_cap: 5000 }]))
+  })
+
+  it('M15: recusa teto que não é inteiro positivo, sem chamar a API', async () => {
+    const game = makeGame({ status: 'published', published_version_id: 'v1' })
+    serveGame(game, true)
+    const { user } = renderAt(`/admin/jogos/${game.id}`)
+
+    const section = await screen.findByRole('region', { name: 'Teto de score' })
+    await user.type(within(section).getByLabelText('Teto (vazio para remover)'), '1.5')
+    await user.click(within(section).getByRole('button', { name: 'Salvar teto' }))
+
+    expect(await within(section).findByText('Use um número inteiro maior que zero.')).toBeInTheDocument()
+  })
 })

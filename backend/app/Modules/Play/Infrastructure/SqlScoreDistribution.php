@@ -16,11 +16,18 @@ final readonly class SqlScoreDistribution implements ScoreDistribution
     public function of(string $gameId): ScoreStatistics
     {
         $row = $this->db->selectOne(<<<'SQL'
-            SELECT COUNT(*) AS count, percentile_disc(0.99) WITHIN GROUP (ORDER BY value) AS p99
+            SELECT COUNT(*) AS count,
+                   percentile_disc(0.99) WITHIN GROUP (ORDER BY s.value) AS p99,
+                   percentile_cont(0.99) WITHIN GROUP (ORDER BY s.value / GREATEST(EXTRACT(EPOCH FROM gs.ended_at - gs.started_at), 1)) AS p99_per_second
             FROM scores s
+            JOIN game_sessions gs ON gs.id = s.game_session_id
             WHERE s.game_id = ? AND s.hidden_at IS NULL AND (NOT s.flagged OR s.flag_cleared_at IS NOT NULL)
             SQL, [$gameId]);
 
-        return new ScoreStatistics((int) ($row->count ?? 0), isset($row->p99) ? (int) $row->p99 : null);
+        return new ScoreStatistics(
+            (int) ($row->count ?? 0),
+            isset($row->p99) ? (int) $row->p99 : null,
+            isset($row->p99_per_second) ? (float) $row->p99_per_second : null,
+        );
     }
 }

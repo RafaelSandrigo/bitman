@@ -47,7 +47,12 @@ final readonly class SubmitScore
                 $this->playableGames->assertStillAcceptsScores($session->game_id, $session->game_version_id);
 
                 $previousBest = $this->personalBests->of($session->game_id, $player->id);
-                $flagReason = $this->anomalies->flagReason($value, $this->distribution->of($session->game_id));
+                $flagReason = $this->anomalies->flagReason(
+                    $value,
+                    $this->distribution->of($session->game_id),
+                    (int) $session->started_at->diffInSeconds(CarbonImmutable::now()),
+                    $this->playableGames->scoreCapOf($session->game_id),
+                );
 
                 $score = $session->recordScore($player, $token, $value, $this->rules, CarbonImmutable::now(), $flagReason);
                 $this->publisher->publishFrom($session);

@@ -65,7 +65,12 @@ final readonly class ClaimGuestScore
         $this->playableGames->assertStillAcceptsScores($play->game_id, $play->game_version_id);
 
         $previousBest = $this->personalBests->of($play->game_id, $player->id);
-        $flagReason = $play->value === null ? null : $this->anomalies->flagReason(ScoreValue::fromInt($play->value), $this->distribution->of($play->game_id));
+        $flagReason = $play->value === null || $play->ended_at === null ? null : $this->anomalies->flagReason(
+            ScoreValue::fromInt($play->value),
+            $this->distribution->of($play->game_id),
+            (int) $play->started_at->diffInSeconds($play->ended_at),
+            $this->playableGames->scoreCapOf($play->game_id),
+        );
         $session = $play->claim($player, $token, CarbonImmutable::now(), $flagReason);
         $this->publisher->publishFrom($session);
 

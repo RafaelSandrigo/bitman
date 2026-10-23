@@ -11,5 +11,7 @@ final readonly class ScoreStatistics
         public int $count,
         /** Percentil 99 dos valores; null sem nenhum score. */
         public ?int $p99,
+        /** M15: percentil 99 dos pontos por segundo de partida; null sem nenhum score. */
+        public ?float $p99PerSecond = null,
     ) {}
 }

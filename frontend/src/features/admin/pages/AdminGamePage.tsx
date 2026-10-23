@@ -5,6 +5,7 @@ import { errorMessage } from '../../../shared/api/http'
 import { Alert } from '../../../shared/ui/Alert'
 import { Button } from '../../../shared/ui/Button'
 import { gameStatusLabels } from '../../catalog/game'
+import { ScoreCapForm } from '../ScoreCapForm'
 import { blockGame, getAdminGame, unblockGame } from '../games'
 import { RejectWithReason } from '../RejectWithReason'
 import { listGameVersions, versionStatusLabels } from '../versions'
@@ -72,6 +73,8 @@ export function AdminGamePage() {
           </>
         )}
       </section>
+
+      <ScoreCapForm gameId={g.id} current={g.score_cap} onSaved={refresh} />
 
       <Link to={`/admin/auditoria?game_id=${encodeURIComponent(g.id)}`} className="text-sm text-emerald-400 hover:underline">
         Linha do tempo de auditoria do jogo

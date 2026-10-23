@@ -26,6 +26,14 @@ final readonly class PlayableGames
         return $game === null || $version === null ? null : [$game, $version];
     }
 
+    /** M15: o teto de score que o admin definiu para o jogo, se houver. */
+    public function scoreCapOf(string $gameId): ?int
+    {
+        $cap = Game::query()->whereKey($gameId)->value('score_cap');
+
+        return $cap === null ? null : (int) $cap;
+    }
+
     /**
      * Jogo bloqueado ou versão retirada durante a partida: o score não entra. Versão substituída
      * por uma nova durante a partida continua valendo (o ranking considera todas as versões).
