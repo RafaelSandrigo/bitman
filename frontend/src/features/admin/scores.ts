@@ -24,6 +24,11 @@ const ScorePageSchema = z.object({
   meta: z.object({ current_page: z.number(), last_page: z.number(), total: z.number() }),
 })
 
+/** M21: o card do painel. */
+export async function getScoreSummary() {
+  return (await apiGet('/api/v1/admin/scores/summary', z.object({ data: z.object({ in_review: z.number().int().nonnegative() }) }))).data
+}
+
 export function listScores(filter: ScoreFilter, page: number) {
   return apiGet(`/api/v1/admin/scores?filter=${filter}&page=${page}`, ScorePageSchema)
 }

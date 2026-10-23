@@ -9,10 +9,12 @@ use App\Modules\Play\Application\Actions\HideScore;
 use App\Modules\Play\Application\Actions\KeepFlaggedScore;
 use App\Modules\Play\Application\Actions\ListScores;
 use App\Modules\Play\Application\Actions\RestoreScore;
+use App\Modules\Play\Application\Actions\SummarizeScores;
 use App\Modules\Play\Domain\Score;
 use App\Modules\Play\Http\Requests\HideScoreRequest;
 use App\Modules\Play\Http\Resources\AdminScoreResource;
 use Illuminate\Container\Attributes\CurrentUser;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Validation\Rule;
@@ -31,6 +33,11 @@ final class ScoreController
         $gameId = is_string($validated['game_id'] ?? null) ? strtolower($validated['game_id']) : null;
 
         return AdminScoreResource::collection($listScores($actor, $filter, $gameId));
+    }
+
+    public function summary(#[CurrentUser] User $actor, SummarizeScores $summarizeScores): JsonResponse
+    {
+        return response()->json(['data' => ['in_review' => $summarizeScores->inReview($actor)]]);
     }
 
     public function hide(string $score, HideScoreRequest $request, #[CurrentUser] User $actor, HideScore $hideScore): AdminScoreResource

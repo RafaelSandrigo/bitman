@@ -13,6 +13,7 @@ use App\Modules\Play\Domain\Leaderboard;
 use App\Modules\Play\Domain\PlayRules;
 use App\Modules\Play\Domain\ScoreDistribution;
 use App\Modules\Play\Infrastructure\Listeners\ForgetCachedLeaderboard;
+use App\Modules\Play\Infrastructure\Listeners\NotifyModeratorsOfFlaggedScore;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Http\Request;
@@ -45,6 +46,7 @@ final class PlayServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Event::listen([ScoreRecorded::class, ScoreHidden::class, ScoreRestored::class, ScoreKept::class], ForgetCachedLeaderboard::class);
+        Event::listen(ScoreRecorded::class, NotifyModeratorsOfFlaggedScore::class);
 
         // S2: limite por jogador e jogo nas partidas (cada uma aceita um score) e por jogador nos envios.
         RateLimiter::for('game-sessions', function (Request $request): array {
