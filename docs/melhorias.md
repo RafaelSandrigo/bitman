@@ -21,6 +21,5 @@ anotado no commit.
 | M11 | E2E num navegador de verdade | O aceite da Fase 5 é coberto pela API (`EndToEndPublicationTest`) e por testes de componente do iframe; nenhum teste abre o jogo num navegador real | Playwright num container descartável, contra uma stack de teste, conferindo iframe, CSP e headers | Fase 5 |
 | M13 | Endpoint de jogos do admin | A aba Jogos usa `GET /admin/submissions?status=…`, nome herdado da fila de submissões | Renomear para `GET /admin/games` mantendo o filtro | Fase 5 |
 
-| M14 | Expirar sessões vencidas no banco | Uma sessão que passou do prazo continua `open` no banco: o envio é recusado, mas o estado não reflete isso (só vira `expired` quando outra partida do mesmo jogo começa) | Comando agendado que marca `expired` as vencidas, o que também permite medir partidas abandonadas | Fase 6 |
 | M16 | Posição fora do top 100 | O ranking mostra só as 100 primeiras posições; quem está abaixo só vê a própria posição logo depois de enviar um score | Mostrar "sua posição: Nº" abaixo da tabela para o jogador logado | Fase 6 |
 | M17 | Jogar de novo pelo próprio jogo | Cada partida recarrega o iframe pelo botão **Jogar de novo** do hub; o jogo não consegue oferecer "jogar de novo" na própria tela | Mensagem `play-again` no protocolo (v1, opcional): o hub abre outra sessão e recarrega o iframe, sem nunca passar o token ao jogo | Fase 6 |

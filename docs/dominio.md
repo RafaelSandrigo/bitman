@@ -178,7 +178,9 @@ total e se há novas (`GET /api/v1/admin/versions/summary`).
   - `start()` só numa versão jogável (I9) e para conta com e-mail confirmado (A5). Gera um token de 256 bits; só o
     SHA-256 é guardado, e o token em claro vai uma única vez para a SPA (nunca para o jogo).
   - Começar uma partida expira a aberta anterior do mesmo jogo (`expired`): no máximo uma `open` por jogador e jogo
-    (índice parcial). Depois de `expiresAt` (2 h), a sessão continua `open` no banco, mas não aceita score.
+    (índice parcial). Depois de `expiresAt` (2 h), a sessão não aceita score, e `bitman:expire-sessions` (a cada
+    15 minutos, M14) a marca `expired` com o fim no prazo. O mesmo comando apaga partidas de visitante sem score para
+    salvar (abandonadas ou com o prazo de salvar vencido).
   - `recordScore()` aplica I10, nesta ordem: o token confere e a sessão é do jogador (senão, "sessão inválida", sem
     revelar mais nada); está `open` (`scored` → replay, 409); dentro do prazo; durou o mínimo (5 s).
 - `Score`: `gameSessionId` (único), `userId`, `gameId`, `gameVersionId`, `value`

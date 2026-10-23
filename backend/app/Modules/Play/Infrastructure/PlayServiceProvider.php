@@ -12,6 +12,7 @@ use App\Modules\Play\Domain\Events\ScoreRestored;
 use App\Modules\Play\Domain\Leaderboard;
 use App\Modules\Play\Domain\PlayRules;
 use App\Modules\Play\Domain\ScoreDistribution;
+use App\Modules\Play\Infrastructure\Console\ExpireSessionsCommand;
 use App\Modules\Play\Infrastructure\Listeners\ForgetCachedLeaderboard;
 use App\Modules\Play\Infrastructure\Listeners\NotifyModeratorsOfFlaggedScore;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -45,6 +46,9 @@ final class PlayServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        if ($this->app->runningInConsole()) {
+            $this->commands([ExpireSessionsCommand::class]);
+        }
         Event::listen([ScoreRecorded::class, ScoreHidden::class, ScoreRestored::class, ScoreKept::class], ForgetCachedLeaderboard::class);
         Event::listen(ScoreRecorded::class, NotifyModeratorsOfFlaggedScore::class);
 

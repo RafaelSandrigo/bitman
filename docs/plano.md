@@ -195,6 +195,7 @@ e URI) depois do fluxo completo.
 | M7 | Diff linha a linha no Portão 2 para arquivo `modified`: o conteúdo anterior vem do archive da versão no ar, conferido pelo hash. Abre em **Mudanças**, com **Arquivo completo** a um clique | J5 |
 | M3 | E-mail ao dono quando a versão para (com o motivo) ou vai ao ar, e resumo diário ao admin das filas dos portões | [arquitetura.md](arquitetura.md#e-mails) |
 | M15 | Anomalia por pontos por segundo de partida e teto opcional de score por jogo (definido pelo admin na página do jogo, auditado); o teto vale desde o primeiro score | [dominio.md](dominio.md#gamesession-e-score-play), S2 |
+| M14 | `bitman:expire-sessions` a cada 15 minutos: sessões vencidas viram `expired` (log `play.sessions_expired` com a contagem) e partidas de visitante sem score para salvar são apagadas | [dominio.md](dominio.md#gamesession-e-score-play) |
 
 ## Checklist de lançamento
 
