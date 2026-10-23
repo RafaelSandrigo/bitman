@@ -192,6 +192,7 @@ e URI) depois do fluxo completo.
 | M12 | `bitman:reconcile-served`, de hora em hora: tira do ar o que está servido sem versão no ar e devolve ao ar, só a partir do archive e com os hashes conferidos, o que deveria estar servido (ou está diferente). Logs `served.*` e exit 1 em falha | [arquitetura.md](arquitetura.md#publicação), J6 |
 | Logs | Canal `stderr` em JSON estruturado por padrão (`JsonFormatter`) | [convencoes.md](convencoes.md#logs) |
 | M10 | Aviso **Há uma nova versão do Bitman — Recarregar**: `version.json` com o commit do release, comparado com o do bundle ao focar a aba e a cada 5 minutos | [implantacao.md](implantacao.md#make-release) |
+| M7 | Diff linha a linha no Portão 2 para arquivo `modified`: o conteúdo anterior vem do archive da versão no ar, conferido pelo hash. Abre em **Mudanças**, com **Arquivo completo** a um clique | J5 |
 
 ## Checklist de lançamento
 

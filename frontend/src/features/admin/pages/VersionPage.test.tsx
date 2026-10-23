@@ -181,6 +181,38 @@ describe('VersionPage', () => {
       await waitFor(() => expect(bodies).toEqual([{ decision: 'rejected', sha256: file.sha256, reason: 'Minerador de cripto.' }]))
     })
 
+    it('M7: arquivo modificado abre no diff contra a versão no ar; o arquivo completo fica a um clique', async () => {
+      const file = makeVersionFile({ change_type: 'modified' })
+      const version = reviewing(file)
+      server.use(
+        ...sessionHandlers(makeAdmin()).handlers,
+        http.get(`/api/v1/admin/versions/${version.id}`, () => HttpResponse.json({ data: version })),
+        http.get(`/api/v1/admin/versions/${version.id}/files/${file.id}/content`, () =>
+          HttpResponse.json({
+            data: {
+              id: file.id,
+              path: 'game.js',
+              sha256: file.sha256,
+              size: 22,
+              content: 'let a = 1;\nlet b = 3;\n',
+              previous: { version_number: 1, content: 'let a = 1;\nlet b = 2;\n' },
+              previous_unavailable: false,
+            },
+          }),
+        ),
+      )
+      const { user } = renderAt(`/admin/versoes/${version.id}`)
+
+      await user.click(await screen.findByRole('button', { name: 'Ver conteúdo' }))
+      const diff = await screen.findByLabelText('Mudanças em game.js')
+      expect(diff.querySelector('[data-kind="removed"]')).toHaveTextContent('let b = 2;')
+      expect(diff.querySelector('[data-kind="added"]')).toHaveTextContent('let b = 3;')
+      expect(screen.getByText('2 linhas mudaram desde a versão 1 (no ar).')).toBeInTheDocument()
+
+      await user.click(screen.getByRole('tab', { name: 'Arquivo completo' }))
+      expect(screen.getByLabelText('Conteúdo de game.js')).toBeInTheDocument()
+    })
+
     it('marca caracteres invisíveis e bidirecionais (Trojan Source)', async () => {
       const file = makeVersionFile()
       const version = reviewing(file)

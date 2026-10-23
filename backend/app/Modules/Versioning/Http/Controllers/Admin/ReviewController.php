@@ -43,6 +43,12 @@ final class ReviewController
             'sha256' => $content->file->sha256,
             'size' => $content->file->size,
             'content' => $content->content,
+            'change_type' => $content->file->change_type->value,
+            'previous' => $content->previous === null ? null : [
+                'version_number' => $content->previous->versionNumber,
+                'content' => $content->previous->content,
+            ],
+            'previous_unavailable' => $content->previousUnavailable,
         ]])->header('Cache-Control', 'no-store');
     }
 

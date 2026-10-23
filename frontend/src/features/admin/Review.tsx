@@ -3,11 +3,12 @@ import { useState } from 'react'
 import { errorMessage } from '../../shared/api/http'
 import { Alert } from '../../shared/ui/Alert'
 import { Button } from '../../shared/ui/Button'
+import { DiffViewer } from './DiffViewer'
 import { FileViewer } from './FileViewer'
 import { formatSize } from './format'
 import { RejectWithReason } from './RejectWithReason'
 import { useRefreshVersions } from './useRefreshVersions'
-import { approveCommit, getFileContent, rejectCommit, reviewFile, type VersionDetail, type VersionFile } from './versions'
+import { approveCommit, getFileContent, rejectCommit, reviewFile, type FileContent, type VersionDetail, type VersionFile } from './versions'
 
 const dateFormat = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
 
@@ -85,6 +86,33 @@ function FileDecision({ versionId, file, sha256 }: { versionId: string; file: Ve
   )
 }
 
+/** M7: um arquivo modificado abre no diff contra a versão no ar; o arquivo completo fica a um clique. */
+function FileContentView({ file }: { file: FileContent }) {
+  const [full, setFull] = useState(false)
+  const previous = file.previous
+
+  return (
+    <div className="space-y-2">
+      {file.previous_unavailable && <Alert tone="error">Não foi possível conferir a versão no ar; o diff não está disponível.</Alert>}
+      {previous && (
+        <div role="tablist" aria-label="Visualização" className="flex gap-2">
+          <Button variant={full ? 'secondary' : 'primary'} role="tab" aria-selected={!full} onClick={() => setFull(false)}>
+            Mudanças
+          </Button>
+          <Button variant={full ? 'primary' : 'secondary'} role="tab" aria-selected={full} onClick={() => setFull(true)}>
+            Arquivo completo
+          </Button>
+        </div>
+      )}
+      {previous && !full ? (
+        <DiffViewer path={file.path} before={previous.content} after={file.content} previousNumber={previous.version_number} />
+      ) : (
+        <FileViewer file={file} />
+      )}
+    </div>
+  )
+}
+
 export function FileCard({ versionId, file, canView, canReview }: { versionId: string; file: VersionFile; canView: boolean; canReview: boolean }) {
   const [open, setOpen] = useState(false)
   const content = useQuery({
@@ -122,7 +150,7 @@ export function FileCard({ versionId, file, canView, canReview }: { versionId: s
       {open && content.isError && <Alert tone="error">{errorMessage(content.error)}</Alert>}
       {open && content.data && (
         <>
-          <FileViewer file={content.data} />
+          <FileContentView file={content.data} />
           {!sameHash && <Alert tone="error">O conteúdo recebido não corresponde ao hash do arquivo. Não decida sobre ele.</Alert>}
           {canReview && sameHash && <FileDecision versionId={versionId} file={file} sha256={content.data.sha256} />}
         </>

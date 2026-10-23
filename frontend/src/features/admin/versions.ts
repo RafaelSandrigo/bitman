@@ -169,6 +169,9 @@ export const FileContentSchema = z.object({
   sha256: Sha256,
   size: z.number().int().nonnegative(),
   content: z.string(),
+  // M7: para um arquivo `modified`, o da versão publicada (do archive, com o hash conferido).
+  previous: z.object({ version_number: z.number().int().positive(), content: z.string() }).nullable().default(null),
+  previous_unavailable: z.boolean().default(false),
 })
 export type FileContent = z.infer<typeof FileContentSchema>
 
